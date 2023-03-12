@@ -66,16 +66,45 @@ executable fronius-to-influx
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules:    FroniusData,
+                      FroniusCommon,
+                      FroniusInverterData,
+                      FroniusPowerflowData
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.17.0.0
+    build-depends:    aeson,
+                      base >=4.14.3.0,
+                      containers,
+                      base-compat-batteries,
+                      deepseq,
+                      time,
+                      vector,
+                      text,
+                      influxdb,
 
     -- Directories containing source files.
     hs-source-dirs:   app
 
     -- Base language which the package is written in.
     default-language: GHC2021
+
+test-suite fronius-to-influx-tests
+    default-language: GHC2021
+    type: exitcode-stdio-1.0
+    main-is: TestMain.hs
+    hs-source-dirs:   tests, app
+    other-modules:    TestFroniusData,
+                      FroniusData,
+                      FroniusCommon,
+                      FroniusInverterData,
+                      FroniusPowerflowData
+    build-depends:    aeson,
+                      base >=4.14.3.0,
+                      base-compat-batteries,
+                      bytestring,
+                      containers,
+                      HUnit,
+                      text
