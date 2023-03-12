@@ -66,7 +66,10 @@ executable fronius-to-influx
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules:    FroniusData,
+    other-modules:    Archive,
+                      Common,
+                      InfluxData,
+                      FroniusData,
                       FroniusCommon,
                       FroniusInverterData,
                       FroniusPowerflowData
@@ -76,14 +79,20 @@ executable fronius-to-influx
 
     -- Other library packages from which modules are imported.
     build-depends:    aeson,
+                      archive-libarchive,
                       base >=4.14.3.0,
-                      containers,
                       base-compat-batteries,
+                      bytestring,
+                      cmdargs,
+                      containers,
                       deepseq,
+                      directory,
+                      influxdb,
+                      libarchive,
+                      text,
                       time,
                       vector,
-                      text,
-                      influxdb,
+                      zlib,
 
     -- Directories containing source files.
     hs-source-dirs:   app
