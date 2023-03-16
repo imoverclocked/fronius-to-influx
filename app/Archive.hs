@@ -9,7 +9,7 @@ import qualified Codec.Compression.Zlib as Zlib
 import Data.List (isSuffixOf)
 
 import Archive.FFI (readArchiveBytes, Entry)
-import Codec.Archive
+import Codec.Archive ( Entry(content, filepath), EntryContent(NormalFile) )
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 
@@ -30,14 +30,29 @@ processArchive path entryProcessor = do
         Left err -> return [ArchiveStatus{
             path = path,
             success = False,
-            msg = show err ++ ": Perhaps an unsupported compression format?"}]
+            msg = show err ++ ": Perhaps an unsupported compression format?",
+            metrics = InfluxMetrics{ -- TODO: create empty InfluxMetrics
+                measurement = "",
+                tags = [],
+                fields = [],
+                timestamp = Nothing
+            }}]
         Right entries -> processArchiveContents entryProcessor entries
 
 entryToArchiveStatus :: ProcessEntry -> String -> EntryContent String BS.ByteString -> IO ArchiveStatus
 entryToArchiveStatus entryProcessor filepath content =
     case content of
-        NormalFile e -> entryProcessor filepath e
-        _ -> do return ArchiveStatus{path = filepath, success = True, msg = "skipped non-file"}
+        NormalFile e -> entryProcessor filepath $ BSL.fromStrict e
+        _ -> do return ArchiveStatus{
+            path = filepath,
+            success = True,
+            msg = "skipped non-file",
+            metrics = InfluxMetrics{ -- TODO: create empty InfluxMetrics
+                measurement = "",
+                tags = [],
+                fields = [],
+                timestamp = Nothing
+            }}
 
 processArchiveContents :: ProcessEntry -> [Archive.FFI.Entry] -> IO [ArchiveStatus]
 processArchiveContents entryProcessor entries = sequence [entryToArchiveStatus entryProcessor (filepath e) (content e) | e <- entries]
