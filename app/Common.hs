@@ -33,6 +33,7 @@ type ProcessEntry = String -> BS.ByteString -> IO ArchiveStatus
 -- messy but convenient to keep args here so we can just pass the args object around
 data FroniusToInflux = FroniusToInflux {
    drop_null :: Bool,
+   influx_protocol :: String,
    host :: String,
    port :: Int,
    files :: [FilePath]
@@ -41,6 +42,7 @@ data FroniusToInflux = FroniusToInflux {
 defaultArgs :: FroniusToInflux
 defaultArgs = FroniusToInflux {
    drop_null = True &= help "Drop null values from influx output data",
+   influx_protocol = "udp" &= help "connect via http or udp (default)",
    host = "127.0.0.1" &= help "ignored for stdout connection-type",
    port = 8086,
    files = def &= args &= typ "FILES/DIRS/TAR.GZ"

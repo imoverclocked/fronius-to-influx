@@ -48,7 +48,11 @@ main = do
    pathStatusRaw <- mapM processPath $ files realArgs
    let pathStatus = concat pathStatusRaw
 
-   _ <- sendStats (host realArgs) (port realArgs) [(metrics status, status) | status <- pathStatus]
+   _ <- sendStats
+      (influx_protocol realArgs)
+      (host realArgs)
+      (port realArgs)
+      [(metrics status, status) | status <- pathStatus]
 
    let successCount = length $ [i | i <- pathStatus, success i]
    let failureCount = length $ [i | i <- pathStatus, not (success i)]
