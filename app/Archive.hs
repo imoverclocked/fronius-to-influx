@@ -31,12 +31,8 @@ processArchive path entryProcessor = do
             path = path,
             success = False,
             msg = show err ++ ": Perhaps an unsupported compression format?",
-            metrics = InfluxMetrics{ -- TODO: create empty InfluxMetrics
-                measurement = "",
-                tags = [],
-                fields = [],
-                timestamp = Nothing
-            }}]
+            metrics = []
+            }]
         Right entries -> processArchiveContents entryProcessor entries
 
 entryToArchiveStatus :: ProcessEntry -> String -> EntryContent String BS.ByteString -> IO ArchiveStatus
@@ -47,12 +43,8 @@ entryToArchiveStatus entryProcessor filepath content =
             path = filepath,
             success = True,
             msg = "skipped non-file",
-            metrics = InfluxMetrics{ -- TODO: create empty InfluxMetrics
-                measurement = "",
-                tags = [],
-                fields = [],
-                timestamp = Nothing
-            }}
+            metrics = []
+            }
 
 processArchiveContents :: ProcessEntry -> [Archive.FFI.Entry] -> IO [ArchiveStatus]
 processArchiveContents entryProcessor entries = sequence [entryToArchiveStatus entryProcessor (filepath e) (content e) | e <- entries]

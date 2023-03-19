@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module InfluxData(
     powerFlow,
     powerFlowFromBS,
@@ -5,11 +7,8 @@ module InfluxData(
     inverterFromBS
 ) where
 
-import Common
-    ( ArchiveStatus(..),
-      InfluxMetrics(InfluxMetrics, timestamp, measurement, tags,
-                    fields) )
-import Data.Aeson (decode, Value (Number))
+import Common ( ArchiveStatus(..), InfluxMetric(..) )
+import Data.Aeson (decode, Value (Number, String))
 import Data.Map (Map, toList)
 import qualified Data.ByteString.Lazy as BSL
 import FroniusCommon (HeadData(..), timestamp)
@@ -18,54 +17,75 @@ import Data.Time (UTCTime, zonedTimeToUTC)
 import FroniusInverterData (InverterEntry(..), InverterStat(..))
 import qualified FroniusPowerflowData as PowerflowEntry
 import Data.Time.RFC3339 ( parseTimeRFC3339 )
-import Data.Either (isLeft)
 import Data.Scientific (toBoundedInteger)
+import Data.Text (unpack)
+import Data.Maybe (mapMaybe)
 
  -- most head data is not useful in stats collection, populate this later if we find a need
 tagsFromHead :: HeadData -> [(String, String)]
 tagsFromHead _ = []
 
--- TODO: populate this
 timestampFromHead :: HeadData -> Maybe UTCTime
 timestampFromHead hD = fmap zonedTimeToUTC (parseTimeRFC3339 $ FroniusCommon.timestamp hD)
 
--- TODO: populate this
-fieldsFromPFBody :: PowerflowBody -> [(String, Either Int Bool)]
-fieldsFromPFBody pFBody =
-    fieldsFromPFBodyInverters (inverters pFBody) ++
-        fieldsFromPFBodySite (site pFBody)
+maybeNumericValue :: (a, Value) -> Maybe (a, Int)
+maybeNumericValue (l, Number n) = case toBoundedInteger n of
+    (Just nInt) -> Just (l, nInt)
+    _           -> Nothing
+maybeNumericValue _ = Nothing
 
-fieldsFromPFBodyInverters :: Map String (Map String Int) -> [(String, Either Int Bool)]
-fieldsFromPFBodyInverters invs = [
-        (
-            "Inverters." ++ inverterId ++ "." ++ statName,
-            Left statValue
-        ) | (inverterId, inverterStats) <- toList invs,
-            (statName, statValue) <- toList inverterStats
+maybeStringValue :: (a, Value) -> Maybe (a, String)
+maybeStringValue (l, String str) = Just (l, unpack str)
+maybeStringValue _ = Nothing
+
+powerflowSiteMetrics :: Map String Value -> [( [(String, String)], (String, Either Int Bool) )]
+powerflowSiteMetrics siteMap = do
+    let siteTags = mapMaybe maybeStringValue $ toList siteMap
+            ++ [("id", "site")]
+    let siteFields = mapMaybe maybeNumericValue $ toList siteMap
+
+    [ (siteTags, (k, Left v)) | (k, v) <- siteFields ]
+
+powerflowInverterMetrics :: Map String (Map String Int) -> [( [(String, String)], (String, Either Int Bool) )]
+powerflowInverterMetrics inverters = [
+    ([("id", inverterId)], (k, Left v))
+    | (inverterId, kv) <- toList inverters,
+    (k, v) <- toList kv
     ]
 
--- hack! We don't care about non-numeric values in fields from Site
-mapNumericValue :: (a, Value) -> (a, Either Int Bool)
-mapNumericValue (k, Number n) = case toBoundedInteger n of
-    (Just nInt) -> (k, Left nInt)
-    _           -> (k, Right False)
-mapNumericValue (k, _) = (k, Right False)
+generatePowerflowMetrics :: Maybe UTCTime -> [(String, String)] -> PowerflowBody -> [InfluxMetric]
+generatePowerflowMetrics timestamp baseTags pfBody = [
+        InfluxMetric{
+            measurement = "powerflow",
+            tags = baseTags ++ [("version", version pfBody)] ++ pFTags,
+            field = field,
+            Common.timestamp = timestamp
+        } | (pFTags, field) <-
+            powerflowSiteMetrics (site pfBody) ++ powerflowInverterMetrics (inverters pfBody)
+    ]
 
-fieldsFromPFBodySite :: Map String Value -> [(String, Either Int Bool)]
-fieldsFromPFBodySite sites =
-    filter (\(_, b) -> isLeft b) -- Only keep numeric values (see hack note above)
-        [ ("Site." ++ s, val) | (s, val) <- map mapNumericValue $ toList sites ]
+-- TODO: cleanup types: produces a list of ( list of tags, inverter stat )
+inverterMetricsFromBody :: Map String InverterStat -> [ ([(String, String)], (String, Either Int Bool) )]
+inverterMetricsFromBody inverterStats = [
+        (
+            [("id", i), ("unit", unit inverterStat)],
+            (key, Left v1)
+        ) |
+        (key, inverterStat) <- toList inverterStats,
+        (i, v1) <- toList $ values inverterStat
+    ]
 
-fieldsFromInverterBody :: Map String InverterStat -> [(String, Either Int Bool)]
-fieldsFromInverterBody invBody =
-    concat [ fieldsFromValues k1 inverterStat | (k1, inverterStat) <- toList invBody ]
+generateInverterMetrics :: Maybe UTCTime -> [(String, String)] -> Map String InverterStat -> [InfluxMetric]
+generateInverterMetrics timestamp baseTags inverterBody = [
+    InfluxMetric{
+        measurement = "inverter",
+        tags = baseTags ++ iTags,
+        field = field,
+        Common.timestamp = timestamp
+    } | (iTags, field) <- inverterMetricsFromBody inverterBody
+    ]
 
-fieldsFromValues :: String -> InverterStat -> [(String, Either Int Bool)]
-fieldsFromValues k1 inverterStat = do
-    -- eg: DAY_ENERGY.Wh.
-    let base = k1 ++ "." ++ unit inverterStat ++ "."
-    -- append the inverter number to create a key: DAY_ENERGY.Wh.1
-    [(base ++ i, Left v1) | (i, v1) <- toList $ values inverterStat]
+-- Convert files/file contents to ArchiveStatus{...}
 
 powerFlow :: String -> IO ArchiveStatus
 powerFlow path = do
@@ -77,17 +97,16 @@ powerFlowFromBS path content = do
     let entry = decode content :: Maybe PowerflowEntry
     let headData = fmap PowerflowEntry.headPF entry
     let bodyData = fmap PowerflowEntry.bodyPF entry
+    let headTags = maybe [] tagsFromHead headData
+    let timestamp = timestampFromHead =<< headData
+
+    let metrics = maybe [] (generatePowerflowMetrics timestamp headTags) bodyData
 
     return ArchiveStatus{
         path = path,
         success = True,
-        msg = "TODO: Process powerflow data",
-        metrics = InfluxMetrics {
-            measurement = "powerflow",
-            tags = maybe [] tagsFromHead headData,
-            fields = maybe [] fieldsFromPFBody bodyData,
-            Common.timestamp = timestampFromHead =<< headData
-            }
+        msg = "",
+        metrics = metrics
         }
 
 inverter :: String -> IO ArchiveStatus
@@ -101,14 +120,13 @@ inverterFromBS path content = do
     let headData = fmap FroniusInverterData.headIE entry
     let bodyData = fmap FroniusInverterData.bodyIE entry
 
+    let headTags = maybe [] tagsFromHead headData
+    let timestamp = timestampFromHead =<< headData
+    let inverterMetrics = maybe [] (generateInverterMetrics timestamp headTags) bodyData
+
     return ArchiveStatus{
         path = path,
         success = True,
-        msg = "TODO: Process inverter data",
-        metrics = InfluxMetrics {
-            measurement = "inverter",
-            tags = maybe [] tagsFromHead headData,
-            fields = maybe [] fieldsFromInverterBody bodyData,
-            Common.timestamp = timestampFromHead =<< headData
-            }
+        msg = "",
+        metrics = inverterMetrics
         }

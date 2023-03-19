@@ -39,7 +39,12 @@ processPathFromBS :: ProcessEntry
 processPathFromBS path bs
    |  ".powerflow" `isSuffixOf` path = powerFlowFromBS path bs
    |  ".inverter"  `isSuffixOf` path = inverterFromBS path bs
-   | otherwise = return ArchiveStatus{path = path, success = False, msg = "Embedded archives are not supported"}
+   | otherwise = return ArchiveStatus{
+      path = path,
+      success = False,
+      msg = "Embedded archives are not supported",
+      metrics = []
+      }
 
 main :: IO ()
 main = do
@@ -52,12 +57,13 @@ main = do
       (influx_protocol realArgs)
       (host realArgs)
       (port realArgs)
-      [(metrics status, status) | status <- pathStatus]
+      [(m, status) | status <- pathStatus, m <- metrics status]
 
    let successCount = length $ [i | i <- pathStatus, success i]
    let failureCount = length $ [i | i <- pathStatus, not (success i)]
 
-   putStrLn $ "Processed " ++ (show successCount) ++ "/" ++ (show $ length pathStatus) ++ " successfully."
+   putStrLn $ "Processed " ++ show successCount ++ "/" ++ show (length pathStatus) ++ " successfully."
+
    if failureCount > 0
       then do
          die $ show [pS | pS <- pathStatus, not $ success pS]

@@ -4,7 +4,7 @@ module Common(
     ArchiveStatus(..),
     ProcessEntry,
     FroniusToInflux(..),
-    InfluxMetrics(..),
+    InfluxMetric(..),
     defaultArgs
 ) where
 
@@ -14,10 +14,10 @@ import Data.Data ( Data )
 import System.Console.CmdArgs ( (&=), args, details, help, summary, typ, Default(def) )
 import Data.Time ( UTCTime )
 
-data InfluxMetrics = InfluxMetrics {
+data InfluxMetric = InfluxMetric {
     measurement :: String,
     tags :: [(String, String)],
-    fields :: [(String, Either Int Bool)],
+    field :: (String, Either Int Bool),
     timestamp :: Maybe UTCTime
 } deriving (Show)
 
@@ -25,7 +25,7 @@ data ArchiveStatus = ArchiveStatus {
    path :: String,
    success :: Bool,
    msg :: String,
-   metrics :: InfluxMetrics
+   metrics :: [InfluxMetric]
 } deriving (Show)
 
 type ProcessEntry = String -> BS.ByteString -> IO ArchiveStatus
