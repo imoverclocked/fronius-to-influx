@@ -90,9 +90,9 @@ generateInverterMetrics timestamp baseTags inverterBody = [
 powerFlow :: String -> IO ArchiveStatus
 powerFlow path = do
     bits <- BSL.readFile path
-    powerFlowFromBS path bits
+    return $ powerFlowFromBS path bits
 
-powerFlowFromBS :: String -> BSL.ByteString -> IO ArchiveStatus
+powerFlowFromBS :: String -> BSL.ByteString -> ArchiveStatus
 powerFlowFromBS path content = do
     let entry = decode content :: Maybe PowerflowEntry
     let headData = fmap PowerflowEntry.headPF entry
@@ -102,7 +102,7 @@ powerFlowFromBS path content = do
 
     let metrics = maybe [] (generatePowerflowMetrics timestamp headTags) bodyData
 
-    return ArchiveStatus{
+    ArchiveStatus{
         path = path,
         success = True,
         msg = "",
@@ -112,9 +112,9 @@ powerFlowFromBS path content = do
 inverter :: String -> IO ArchiveStatus
 inverter path = do
     bits <- BSL.readFile path
-    inverterFromBS path bits
+    return $ inverterFromBS path bits
 
-inverterFromBS :: String -> BSL.ByteString -> IO ArchiveStatus
+inverterFromBS :: String -> BSL.ByteString -> ArchiveStatus
 inverterFromBS path content = do
     let entry = decode content :: Maybe InverterEntry
     let headData = fmap FroniusInverterData.headIE entry
@@ -124,7 +124,7 @@ inverterFromBS path content = do
     let timestamp = timestampFromHead =<< headData
     let inverterMetrics = maybe [] (generateInverterMetrics timestamp headTags) bodyData
 
-    return ArchiveStatus{
+    ArchiveStatus{
         path = path,
         success = True,
         msg = "",

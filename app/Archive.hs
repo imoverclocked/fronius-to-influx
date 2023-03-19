@@ -36,18 +36,18 @@ processArchive path entryProcessor = do
             msg = show err ++ ": Perhaps an unsupported compression format?",
             metrics = []
             }]
-        Right entries -> processArchiveContents entryProcessor entries
+        Right entries -> return $ processArchiveContents entryProcessor entries
 
-entryToArchiveStatus :: ProcessEntry -> String -> EntryContent String BS.ByteString -> IO ArchiveStatus
+entryToArchiveStatus :: ProcessEntry -> String -> EntryContent String BS.ByteString -> ArchiveStatus
 entryToArchiveStatus entryProcessor filepath content =
     case content of
         NormalFile e -> entryProcessor filepath $ BSL.fromStrict e
-        _ -> do return ArchiveStatus{
+        _ -> do ArchiveStatus{
             path = filepath,
             success = True,
             msg = "skipped non-file",
             metrics = []
             }
 
-processArchiveContents :: ProcessEntry -> [Archive.FFI.Entry] -> IO [ArchiveStatus]
-processArchiveContents entryProcessor entries = sequence [entryToArchiveStatus entryProcessor (filepath e) (content e) | e <- entries]
+processArchiveContents :: ProcessEntry -> [Archive.FFI.Entry] -> [ArchiveStatus]
+processArchiveContents entryProcessor entries = [entryToArchiveStatus entryProcessor (filepath e) (content e) | e <- entries]

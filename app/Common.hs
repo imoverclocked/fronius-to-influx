@@ -28,7 +28,7 @@ data ArchiveStatus = ArchiveStatus {
    metrics :: [InfluxMetric]
 } deriving (Show)
 
-type ProcessEntry = String -> BS.ByteString -> IO ArchiveStatus
+type ProcessEntry = String -> BS.ByteString -> ArchiveStatus
 
 -- messy but convenient to keep args here so we can just pass the args object around
 data FroniusToInflux = FroniusToInflux {
@@ -42,17 +42,17 @@ data FroniusToInflux = FroniusToInflux {
 defaultArgs :: FroniusToInflux
 defaultArgs = FroniusToInflux {
    drop_null = True &= help "Drop null values from influx output data",
-   influx_protocol = "udp" &= help "connect via http or udp (default)",
-   host = "127.0.0.1" &= help "ignored for stdout connection-type",
-   port = 8086,
-   files = def &= args &= typ "FILES/DIRS/TAR.GZ"
+   influx_protocol = "udp" &= help "connect via http, https or udp (default)",
+   host = "127.0.0.1" &= help "default: 127.0.0.1",
+   port = 8086 &= help "default: 8086",
+   files = def &= args &= typ "FILES/DIRS/TAR.GZ/TAR.XZ"
    } &=
    help "Parse data from a Fronius Data Logger and send it to influxdb" &=
    summary "fronius-to-influx (C) Tim Spriggs" &=
    details [
  --    --------------------------------------------------------------------------------
-      "fronius-to-influx takes data logged to an FTP server and converts it to influxdb",
-      "for easier digestion of the data (eg: grafana)", "",
+      "fronius-to-influx takes data logged to an FTP server and converts it to ",
+      "influxdb for easier digestion of the data (eg: grafana)", "",
       "This tool supports iterating through tar archives that libarchive natively",
       "detects. In practice this brings storage of stats down from 70MB/day down to a",
       "few hundred kB.", "",

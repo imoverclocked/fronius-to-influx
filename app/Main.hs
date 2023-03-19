@@ -39,7 +39,7 @@ processPathFromBS :: ProcessEntry
 processPathFromBS path bs
    |  ".powerflow" `isSuffixOf` path = powerFlowFromBS path bs
    |  ".inverter"  `isSuffixOf` path = inverterFromBS path bs
-   | otherwise = return ArchiveStatus{
+   | otherwise = ArchiveStatus{
       path = path,
       success = False,
       msg = "Embedded archives are not supported",
