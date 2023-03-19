@@ -52,7 +52,7 @@ Then, `cabal install` should work from within the source tree.
 ### debian ###
 
 ```
-$ sudo apt install zlib1g-dev liblzma5 libarchive-dev ghc cabal-install
+$ sudo apt install zlib1g-dev liblzma-dev libarchive-dev ghc cabal-install
 ```
 
 Then, `cabal install` should work from within the source tree.
