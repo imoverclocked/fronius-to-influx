@@ -5,6 +5,7 @@ module Archive where
 import Common
 
 import qualified Codec.Compression.GZip as GZip
+import qualified Codec.Compression.Lzma as Lzma
 import qualified Codec.Compression.Zlib as Zlib
 import Data.List (isSuffixOf)
 
@@ -19,6 +20,8 @@ getDecompressor :: String -> Decompressor
 getDecompressor path
     | ".gz"   `isSuffixOf` path = GZip.decompress
     | ".tgz"  `isSuffixOf` path = GZip.decompress
+    | ".txz"  `isSuffixOf` path = Lzma.decompress
+    | ".xz"  `isSuffixOf` path = Lzma.decompress
     | ".Z"  `isSuffixOf` path = Zlib.decompress
     | otherwise = id
 

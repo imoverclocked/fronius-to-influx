@@ -91,6 +91,7 @@ executable fronius-to-influx
                       influxdb,
                       libarchive,
                       lens,
+                      lzma,
                       network,
                       network-run,
                       scientific,
