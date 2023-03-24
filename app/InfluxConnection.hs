@@ -4,7 +4,7 @@ module InfluxConnection(
     sendStats
 ) where
 
-import Common ( InfluxMetric(timestamp, measurement, tags, field) )
+import Common ( ArchiveStatus(metrics, success), InfluxMetric(measurement, tags, field, timestamp) )
 import Network.Socket ( SockAddr, Socket )
 import Network.Run.UDP ( runUDPClient )
 
@@ -21,22 +21,32 @@ import Data.Time (UTCTime)
 getUDPConnection :: String -> Int -> (Socket -> SockAddr -> IO m) -> IO m
 getUDPConnection host port = runUDPClient host (show port)
 
-writeUDPMetrics :: [(InfluxMetric, n)] -> UDP.WriteParams -> IO [n]
-writeUDPMetrics metricPairs params = do
-    -- write the metric (potentially into the UDP void)
-    let filtered = [(lineFromMetricPair (metric, foo), foo) | (metric, foo) <- metricPairs, metricFilter metric]
-    sequence_ [UDP.write params $ fst metric | metric <- filtered]
+_archiveStatusToMetric :: ArchiveStatus -> Maybe ArchiveStatus
+_archiveStatusToMetric aS = if success aS
+    then Just aS
+    else Nothing
+
+_writeUDPMetrics :: (Foldable f) => f ArchiveStatus -> UDP.WriteParams -> IO ()
+_writeUDPMetrics archiveStatusF params = do
+    -- write the metrics (potentially into the UDP void)
+    foldMap (_writeUDPMetricsF params . metrics) archiveStatusF
+
     -- Can't do this because https://github.com/maoe/influxdb-haskell/issues/92
-    -- UDP.writeBatch params $ [fst pair | pair <- filtered]
-    return [snd pair | pair <- filtered]
+    -- UDP.writeBatch params metricList
 
-doUDPClient :: [(InfluxMetric, n)] -> Socket -> SockAddr -> IO [n]
-doUDPClient metricResultPairs sock sockAddr = do
+_writeUDPMetricsF :: (Foldable f) => UDP.WriteParams -> f InfluxMetric -> IO ()
+_writeUDPMetricsF params = foldMap (UDP.write params . _lineFromMetric)
+
+doUDPClient :: (Foldable f) => f ArchiveStatus -> Socket -> SockAddr -> IO ()
+doUDPClient archiveStatusList sock sockAddr = do
     let params = UDP.writeParams sock sockAddr
-    writeUDPMetrics metricResultPairs params
+    _writeUDPMetrics archiveStatusList params
 
-lineFromMetricPair :: (InfluxMetric, b) -> Line UTCTime
-lineFromMetricPair (metric, _) = do
+_accumulateMetrics :: ArchiveStatus -> [InfluxMetric] -> [InfluxMetric]
+_accumulateMetrics archiveStatus extractedMetrics = extractedMetrics ++ metrics archiveStatus
+
+_lineFromMetric :: InfluxMetric -> Line UTCTime
+_lineFromMetric metric = do
     -- Type wrangling
     let m = fromString (measurement metric) :: Measurement
     let t = Data.Map.fromList [ (fromString k, fromString v) | (k, v) <- tags metric ]
@@ -48,21 +58,19 @@ lineFromMetricPair (metric, _) = do
 
     Line m t f ts
 
-metricFilter :: InfluxMetric -> Bool
-metricFilter metric = not $ null $ measurement metric
+writeHTTPMetrics :: (Foldable f) => f ArchiveStatus -> HTTP.WriteParams -> IO ()
+writeHTTPMetrics archiveStatusF params = do
+    HTTP.writeBatch params $
+        map _lineFromMetric $
+        foldr _accumulateMetrics [] archiveStatusF
 
-writeHTTPMetrics :: (Show n) => [(InfluxMetric, n)] -> HTTP.WriteParams -> IO [n]
-writeHTTPMetrics metricPairs params = do
-    HTTP.writeBatch params $ [lineFromMetricPair pair | pair <- metricPairs, metricFilter $ fst pair ]
-    return [snd pair | pair <- metricPairs]
-
-doHTTPClient :: (Show n) => String -> Int -> Bool -> [(InfluxMetric, n)] -> IO [n]
+doHTTPClient :: (Foldable f) => String -> Int -> Bool -> f ArchiveStatus -> IO ()
 doHTTPClient host port ssl metricResultPairs = do
     let params = HTTP.writeParams "fronius" & server .~ Server{
         _host = fromString host,
         _port = port,
         _ssl = ssl
-    } 
+    }
 
     writeHTTPMetrics metricResultPairs params
 
@@ -70,8 +78,8 @@ doHTTPClient host port ssl metricResultPairs = do
   Takes a list of (InfluxMetric, n) and sends them to a host:port
   returns a list of [n] that was sent (maybe unsuccessfully)
 -}
-sendStats :: (Show n) => String -> String -> Int -> [(InfluxMetric, n)] -> IO [n]
-sendStats "udp" host port f = getUDPConnection host port (doUDPClient f)
-sendStats "http" host port f = doHTTPClient host port False f
-sendStats "https" host port f = doHTTPClient host port True f
+sendStats :: (Foldable f) => String -> String -> Int -> f ArchiveStatus -> IO ()
+sendStats "udp" host port s = getUDPConnection host port (doUDPClient s)
+sendStats "http" host port s = doHTTPClient host port False s
+sendStats "https" host port s = doHTTPClient host port True s
 sendStats unknown _ _ _ = die $ "Unknown protocol: " ++ unknown

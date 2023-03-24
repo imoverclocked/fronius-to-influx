@@ -13,6 +13,8 @@ import Archive.FFI (readArchiveBytes, Entry)
 import Codec.Archive ( Entry(content, filepath), EntryContent(NormalFile) )
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
+import qualified Streaming as S
+import qualified Streaming.Prelude as SP
 
 type Decompressor = BSL.ByteString -> BSL.ByteString
 
@@ -25,23 +27,28 @@ getDecompressor path
     | ".Z"  `isSuffixOf` path = Zlib.decompress
     | otherwise = id
 
-processArchive :: String -> ProcessEntry -> IO [ArchiveStatus]
-processArchive path entryProcessor = do
+processArchive :: String -> ProcessEntry -> ArchiveStatusStream
+processArchive path entryProcessor = S.effect $ _processArchive path entryProcessor
+
+_processArchive :: String -> ProcessEntry -> IO ArchiveStatusStream
+_processArchive path entryProcessor = do
+    let decompressor = getDecompressor path
     archiveBSL <- BSL.readFile path
-    let archiveDecodedBSL = getDecompressor path archiveBSL
+    let archiveDecodedBSL = decompressor archiveBSL
     case Archive.FFI.readArchiveBytes archiveDecodedBSL of
-        Left err -> return [ArchiveStatus{
+        Left err -> return $ SP.yield ArchiveStatus{
             path = path,
             success = False,
             msg = show err ++ ": Perhaps an unsupported compression format?",
             metrics = []
-            }]
-        Right entries -> return $ processArchiveContents entryProcessor entries
+            }
+        -- TODO: plumb Streaming API into processArchiveContents
+        Right entries -> return $ SP.each $ processArchiveContents entryProcessor entries
 
 entryToArchiveStatus :: ProcessEntry -> String -> EntryContent String BS.ByteString -> ArchiveStatus
 entryToArchiveStatus entryProcessor filepath content =
     case content of
-        NormalFile e -> entryProcessor filepath $ BSL.fromStrict e
+        NormalFile e -> entryProcessor filepath e
         _ -> do ArchiveStatus{
             path = filepath,
             success = True,

@@ -7,9 +7,10 @@ module InfluxData(
     inverterFromBS
 ) where
 
-import Common ( ArchiveStatus(..), InfluxMetric(..) )
+import Common ( ArchiveStatusStream, ArchiveStatus(..), InfluxMetric(..) )
 import Data.Aeson (decode, Value (Number, String))
 import Data.Map (Map, toList)
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import FroniusCommon (HeadData(..), timestamp)
 import FroniusPowerflowData ( PowerflowEntry(..), PowerflowBody(..) )
@@ -20,6 +21,8 @@ import Data.Time.RFC3339 ( parseTimeRFC3339 )
 import Data.Scientific (toBoundedInteger)
 import Data.Text (unpack)
 import Data.Maybe (mapMaybe)
+import qualified Streaming as S
+import qualified Streaming.Prelude as SP
 
  -- most head data is not useful in stats collection, populate this later if we find a need
 tagsFromHead :: HeadData -> [(String, String)]
@@ -87,14 +90,17 @@ generateInverterMetrics timestamp baseTags inverterBody = [
 
 -- Convert files/file contents to ArchiveStatus{...}
 
-powerFlow :: String -> IO ArchiveStatus
-powerFlow path = do
-    bits <- BSL.readFile path
-    return $ powerFlowFromBS path bits
+powerFlow :: String -> ArchiveStatusStream
+powerFlow path = S.effect $ _powerFlow path
 
-powerFlowFromBS :: String -> BSL.ByteString -> ArchiveStatus
+_powerFlow :: String -> IO ArchiveStatusStream
+_powerFlow path = do
+    bits <- BS.readFile path -- don't be lazy so we close handles sooner
+    return $ SP.yield $ powerFlowFromBS path bits
+
+powerFlowFromBS :: String -> BS.ByteString -> ArchiveStatus
 powerFlowFromBS path content = do
-    let entry = decode content :: Maybe PowerflowEntry
+    let entry = decode $ BSL.fromStrict content :: Maybe PowerflowEntry
     let headData = fmap PowerflowEntry.headPF entry
     let bodyData = fmap PowerflowEntry.bodyPF entry
     let headTags = maybe [] tagsFromHead headData
@@ -109,14 +115,17 @@ powerFlowFromBS path content = do
         metrics = metrics
         }
 
-inverter :: String -> IO ArchiveStatus
-inverter path = do
-    bits <- BSL.readFile path
-    return $ inverterFromBS path bits
+inverter :: String -> ArchiveStatusStream
+inverter path = S.effect $ _inverter path
 
-inverterFromBS :: String -> BSL.ByteString -> ArchiveStatus
+_inverter :: String -> IO ArchiveStatusStream
+_inverter path = do
+    bits <- BS.readFile path
+    return $ SP.yield $ inverterFromBS path bits
+
+inverterFromBS :: String -> BS.ByteString -> ArchiveStatus
 inverterFromBS path content = do
-    let entry = decode content :: Maybe InverterEntry
+    let entry = decode $ BSL.fromStrict content :: Maybe InverterEntry
     let headData = fmap FroniusInverterData.headIE entry
     let bodyData = fmap FroniusInverterData.bodyIE entry
 
