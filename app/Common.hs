@@ -19,6 +19,7 @@ data InfluxMetric = InfluxMetric {
 
 data ArchiveStatus = ArchiveStatus {
    path :: String,
+   realFile :: Bool, -- does this path correspond to a file on the filesystem?
    success :: Bool,
    msg :: String,
    metrics :: [InfluxMetric]

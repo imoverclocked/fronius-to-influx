@@ -15,7 +15,9 @@ froniustoinflux [OPTIONS] [FILES/DIRS/TAR.GZ/TAR.XZ]
 Common flags:
   -i --influx-protocol=ITEM  connect via http, https or udp (default)
   -h --host=ITEM             default: 127.0.0.1
-  -p --port=INT              default: 8086
+     --port=INT              default: 8086
+     --processed=ITEM        destination for processed files (preserves
+                             relative paths from current directory)
   -? --help                  Display help message
   -V --version               Print version information
 

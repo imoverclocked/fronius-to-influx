@@ -96,7 +96,8 @@ powerFlow path = S.effect $ _powerFlow path
 _powerFlow :: String -> IO ArchiveStatusStream
 _powerFlow path = do
     bits <- BS.readFile path -- don't be lazy so we close handles sooner
-    return $ SP.yield $ powerFlowFromBS path bits
+    let archiveStatus = powerFlowFromBS path bits
+    pure $ SP.yield archiveStatus { realFile = True }
 
 powerFlowFromBS :: String -> BS.ByteString -> ArchiveStatus
 powerFlowFromBS path content = do
@@ -110,6 +111,7 @@ powerFlowFromBS path content = do
 
     ArchiveStatus{
         path = path,
+        realFile = False,
         success = True,
         msg = "",
         metrics = metrics
@@ -121,7 +123,8 @@ inverter path = S.effect $ _inverter path
 _inverter :: String -> IO ArchiveStatusStream
 _inverter path = do
     bits <- BS.readFile path
-    return $ SP.yield $ inverterFromBS path bits
+    let archiveStatus = inverterFromBS path bits
+    pure $ SP.yield archiveStatus { realFile = True }
 
 inverterFromBS :: String -> BS.ByteString -> ArchiveStatus
 inverterFromBS path content = do
@@ -135,6 +138,7 @@ inverterFromBS path content = do
 
     ArchiveStatus{
         path = path,
+        realFile = False,
         success = True,
         msg = "",
         metrics = inverterMetrics

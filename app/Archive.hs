@@ -35,15 +35,19 @@ _processArchive path entryProcessor = do
     let decompressor = getDecompressor path
     archiveBSL <- BSL.readFile path
     let archiveDecodedBSL = decompressor archiveBSL
-    case Archive.FFI.readArchiveBytes archiveDecodedBSL of
-        Left err -> return $ SP.yield ArchiveStatus{
+    let baseArchiveStatus = ArchiveStatus{
             path = path,
+            realFile = True,
             success = False,
-            msg = show err ++ ": Perhaps an unsupported compression format?",
+            msg = "file based archive",
             metrics = []
+    }
+    case Archive.FFI.readArchiveBytes archiveDecodedBSL of
+        Left err -> return $ SP.yield baseArchiveStatus {
+            msg = show err ++ ": Perhaps an unsupported compression format?"
             }
-        -- TODO: plumb Streaming API into processArchiveContents
-        Right entries -> return $ SP.each $ processArchiveContents entryProcessor entries
+        Right entries -> return $ SP.each $
+            baseArchiveStatus {success = True} : processArchiveContents entryProcessor entries
 
 entryToArchiveStatus :: ProcessEntry -> String -> EntryContent String BS.ByteString -> ArchiveStatus
 entryToArchiveStatus entryProcessor filepath content =
@@ -51,6 +55,7 @@ entryToArchiveStatus entryProcessor filepath content =
         NormalFile e -> entryProcessor filepath e
         _ -> do ArchiveStatus{
             path = filepath,
+            realFile = False,
             success = True,
             msg = "skipped non-file",
             metrics = []
