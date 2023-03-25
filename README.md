@@ -13,7 +13,6 @@ froniustoinflux [OPTIONS] [FILES/DIRS/TAR.GZ/TAR.XZ]
   Parse data from a Fronius Data Logger and send it to influxdb
 
 Common flags:
-  -d --drop-null             Drop null values from influx output data
   -i --influx-protocol=ITEM  connect via http, https or udp (default)
   -h --host=ITEM             default: 127.0.0.1
   -p --port=INT              default: 8086
@@ -60,16 +59,6 @@ Then, `cabal install` should work from within the source tree.
 ## Performance ##
 
 I did not focus on optimizing the performance of this tool. In my test configuration, the tool can read/convert statistics faster than my InfluxDB (hosted on a single board computer) can process them.
-
-Reading files from compressed archives is marginally faster than a large number of individual files. Additionally, input files are often opened concurrently which can lead to resource exhaustion. In this case, either run the tool multiple times with smaller numbers of files or put all of the files into a tar (tar.gz, tar.xz work too) and run the tool on the archive instead.
-
-If you see `openBinaryFile: resource exhausted (Too many open files)`, read the above paragraph. Then consider one or more of the following:
-
-`ulimit -a / ulimit -n`
-
-`find . -name \*.powerflow -print0 | xargs -0 -L 256 fronius-to-influxdb`
-
-`tar -cJvf stats.tar.xz *.powerflow && fronius-to-influxdb stats.tar.xz`
 
 ## Local Testing ##
 
@@ -148,5 +137,4 @@ Similar is done for powerflow data.
 * plumb auth support for influxdb client connections
 * support skipping files (on the filesystem and in archives)
 * support other data formats exported by the datamanager
-* fix number-of-open-files concurrency bug
 * add "stdout" protocol for data debugging
