@@ -1,16 +1,16 @@
+{-# LANGUAGE Unsafe #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wno-missing-import-lists #-}
 {-# OPTIONS_GHC -Wno-unsafe #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE Unsafe #-}
 
-module FroniusData(
-    HeadData(..),
-    InverterStat(..),
-    InverterEntry(..),
-    PowerflowBody(..),
-    PowerflowEntry(..)
+module FroniusData (
+    HeadData (..),
+    InverterStat (..),
+    InverterEntry (..),
+    PowerflowBody (..),
+    PowerflowEntry (..),
 ) where
 
-import FroniusCommon        ( HeadData(..) )
-import FroniusPowerflowData ( PowerflowBody(..), PowerflowEntry(..) )
-import FroniusInverterData  ( InverterEntry(..), InverterStat(..) )
+import FroniusCommon (HeadData (..))
+import FroniusInverterData (InverterEntry (..), InverterStat (..))
+import FroniusPowerflowData (PowerflowBody (..), PowerflowEntry (..))

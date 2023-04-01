@@ -1,22 +1,21 @@
-{-# OPTIONS_GHC -Wno-unsafe #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Unsafe #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# OPTIONS_GHC -Wno-unsafe #-}
 
-module FroniusInverterData(
-    InverterStat(..),
-    InverterEntry(..)
+module FroniusInverterData (
+    InverterStat (..),
+    InverterEntry (..),
 ) where
 
-import Prelude (String, Int, Show, Monad (return), ($))
-import GHC.Generics (Generic)
-import Data.Map (Map)
-import Data.Aeson ((.:), (.=), withObject, object, FromJSON(parseJSON), ToJSON(toJSON), Value)
-
-import FroniusCommon ( HeadData )
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), Value, object, withObject, (.:), (.=))
 import Data.Kind (Type)
+import Data.Map (Map)
+import FroniusCommon (HeadData)
+import GHC.Generics (Generic)
+import Prelude (Int, Monad (return), Show, String, ($))
 
 -- Inverter Entry example
 {-
@@ -61,30 +60,31 @@ import Data.Kind (Type)
 -}
 
 type InverterStat :: Type
-data InverterStat = InverterStat {
-    unit   :: String,
-    values :: Map String Int
-} deriving stock (Generic, Show)
+data InverterStat = InverterStat
+    { unit :: String,
+      values :: Map String Int
+    }
+    deriving stock (Generic, Show)
 
 instance FromJSON InverterStat where
     parseJSON = withObject "InverterStat" $ \v -> do
-        unit <-  v .: "Unit"
+        unit <- v .: "Unit"
         values <- v .: "Values"
         return (InverterStat {unit = unit, values = values})
 
 instance ToJSON InverterStat where
     toJSON (InverterStat unit values) = object ["Unit" .= unit, "Values" .= values]
 
-
 type InverterEntry :: Type
 data InverterEntry = InverterEntry
-    { bodyIE   :: Map String InverterStat,
-      headIE   :: HeadData
-    } deriving stock (Generic, Show)
+    { bodyIE :: Map String InverterStat,
+      headIE :: HeadData
+    }
+    deriving stock (Generic, Show)
 
 instance FromJSON InverterEntry where
     parseJSON = withObject "InverterEntry" $ \v -> do
-        bodyIE <-  v .: "Body"
+        bodyIE <- v .: "Body"
         headIE <- v .: "Head"
         return (InverterEntry {bodyIE = bodyIE, headIE = headIE})
 

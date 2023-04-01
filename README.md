@@ -140,3 +140,22 @@ Similar is done for powerflow data.
 * support skipping files (on the filesystem and in archives)
 * support other data formats exported by the datamanager
 * add "stdout" protocol for data debugging
+
+## Development Notes ##
+
+### Code formatting ###
+
+```
+fourmolu --mode inplace \
+  --function-arrows leading \
+  --comma-style trailing \
+  --import-export-style diff-friendly \
+  --indent-wheres false \
+  --record-brace-space true \
+  --newlines-between-decls 1 \
+  --haddock-style multi-line \
+  --let-style newline \
+  --in-style right-align \
+  --respectful false \
+  app
+```

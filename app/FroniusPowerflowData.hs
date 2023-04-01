@@ -1,23 +1,22 @@
-{-# OPTIONS_GHC -Wno-unsafe #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Unsafe #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# OPTIONS_GHC -Wno-unsafe #-}
 
-module FroniusPowerflowData(
-    PowerflowBody(..),
-    PowerflowEntry(..)
+module FroniusPowerflowData (
+    PowerflowBody (..),
+    PowerflowEntry (..),
 ) where
 
-import Prelude (String, Int, Show, Monad (return), ($))
-import GHC.Generics (Generic)
-import Data.Map (Map)
-import Data.Aeson ((.:), (.=), withObject, object, FromJSON(parseJSON), ToJSON(toJSON))
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), object, withObject, (.:), (.=))
 import Data.Aeson.Types (Parser, Value)
-
-import FroniusCommon (HeadData)
 import Data.Kind (Type)
+import Data.Map (Map)
+import FroniusCommon (HeadData)
+import GHC.Generics (Generic)
+import Prelude (Int, Monad (return), Show, String, ($))
 
 -- powerflow entry example
 {-
@@ -60,34 +59,37 @@ import Data.Kind (Type)
 type PowerflowBody :: Type
 data PowerflowBody = PowerflowBody
     { inverters :: Map String (Map String Int),
-      site      :: Map String Value,
-      version   :: String
-    } deriving stock (Generic, Show)
+      site :: Map String Value,
+      version :: String
+    }
+    deriving stock (Generic, Show)
 
 instance ToJSON PowerflowBody where
-    toJSON (PowerflowBody inverters site version) = object
-      [ "Inverters" .= inverters,
-        "Site" .= site,
-        "Version" .= version ]
+    toJSON (PowerflowBody inverters site version) =
+        object
+            [ "Inverters" .= inverters,
+              "Site" .= site,
+              "Version" .= version
+            ]
 
 instance FromJSON PowerflowBody where
     parseJSON = withObject "PowerflowBody" $ \v -> do
-        inverters <-  v .: "Inverters"
+        inverters <- v .: "Inverters"
         site <- v .: "Site"
         version <- v .: "Version"
         return (PowerflowBody {inverters = inverters, site = site, version = version})
-
 
 type PowerflowEntry :: Type
 data PowerflowEntry = PowerflowEntry
     { bodyPF :: PowerflowBody,
       headPF :: HeadData
-    } deriving stock (Generic, Show)
+    }
+    deriving stock (Generic, Show)
 
 instance FromJSON PowerflowEntry where
     parseJSON :: Value -> Parser PowerflowEntry
     parseJSON = withObject "PowerflowEntry" $ \v -> do
-        bodyPF <-  v .: "Body"
+        bodyPF <- v .: "Body"
         headPF <- v .: "Head"
         return (PowerflowEntry {bodyPF = bodyPF, headPF = headPF})
 

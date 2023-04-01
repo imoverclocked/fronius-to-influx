@@ -1,40 +1,43 @@
-{-# OPTIONS_GHC -Wno-unsafe #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE Unsafe #-} -- because aeson
+-- because aeson
+{-# LANGUAGE Unsafe #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# OPTIONS_GHC -Wno-unsafe #-}
 
-module FroniusCommon(
-    HeadData(..),
+module FroniusCommon (
+    HeadData (..),
 ) where
 
-import Prelude (String, Show, Monad (return), ($))
-import GHC.Generics (Generic)
-import Data.Map (Map)
-import Data.Aeson ((.:), (.=), withObject, object, FromJSON(parseJSON), ToJSON(toJSON))
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), object, withObject, (.:), (.=))
 import Data.Aeson.Types (Parser, Value)
 import Data.Kind (Type)
+import Data.Map (Map)
+import GHC.Generics (Generic)
+import Prelude (Monad (return), Show, String, ($))
 
 type HeadData :: Type
-data HeadData = HeadData {
-    requestArguments :: Map String String,
-    status           :: Map String Value,
-    timestamp        :: String
-} deriving stock (Generic, Show)
+data HeadData = HeadData
+    { requestArguments :: Map String String,
+      status :: Map String Value,
+      timestamp :: String
+    }
+    deriving stock (Generic, Show)
 
 instance FromJSON HeadData where
     parseJSON :: Value -> Parser HeadData
     parseJSON = withObject "HeadData" $ \v -> do
-        requestArguments <-  v .: "RequestArguments"
+        requestArguments <- v .: "RequestArguments"
         status <- v .: "Status"
         timestamp <- v .: "Timestamp"
         return (HeadData {requestArguments = requestArguments, status = status, timestamp = timestamp})
 
 instance ToJSON HeadData where
     toJSON :: HeadData -> Value
-    toJSON (HeadData requestArguments status timestamp) = object [
-        "RequestArguments" .= requestArguments,
-        "Status" .= status,
-        "Timestamp" .= timestamp
-        ]
+    toJSON (HeadData requestArguments status timestamp) =
+        object
+            [ "RequestArguments" .= requestArguments,
+              "Status" .= status,
+              "Timestamp" .= timestamp
+            ]
