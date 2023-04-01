@@ -1,4 +1,7 @@
+{-# OPTIONS_GHC -Wno-unsafe #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE Unsafe #-} -- because aeson is unsafe
 
 module InfluxData(
     powerFlow,
@@ -7,22 +10,38 @@ module InfluxData(
     inverterFromBS
 ) where
 
-import Common ( ArchiveStatusStream, ArchiveStatus(..), InfluxMetric(..) )
+import Prelude
+    (
+        (++), (=<<), ($),
+        Applicative (pure),
+        Bool (True, False),
+        Either (Left),
+        Functor (fmap),
+        IO,
+        Int,
+        String
+   )
+import Common
+    (
+        ArchiveStatus (ArchiveStatus, realFile, path, success, msg, metrics),
+        ArchiveStatusStream,
+        InfluxMetric (InfluxMetric, measurement, tags, field, timestamp)
+    )
 import Data.Aeson (decode, Value (Number, String))
 import Data.Map (Map, toList)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BSL
-import FroniusCommon (HeadData(..), timestamp)
-import FroniusPowerflowData ( PowerflowEntry(..), PowerflowBody(..) )
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as BSL
+import FroniusCommon (HeadData, timestamp)
+import FroniusPowerflowData (PowerflowEntry, PowerflowBody (version, site, inverters))
 import Data.Time (UTCTime, zonedTimeToUTC)
-import FroniusInverterData (InverterEntry(..), InverterStat(..))
-import qualified FroniusPowerflowData as PowerflowEntry
+import FroniusInverterData (InverterEntry (headIE, bodyIE), InverterStat (unit, values))
+import FroniusPowerflowData qualified as PowerflowEntry
 import Data.Time.RFC3339 ( parseTimeRFC3339 )
 import Data.Scientific (toBoundedInteger)
 import Data.Text (unpack)
-import Data.Maybe (mapMaybe)
-import qualified Streaming as S
-import qualified Streaming.Prelude as SP
+import Data.Maybe (mapMaybe, Maybe (Just, Nothing), maybe)
+import Streaming qualified as S
+import Streaming.Prelude qualified as SP
 
  -- most head data is not useful in stats collection, populate this later if we find a need
 tagsFromHead :: HeadData -> [(String, String)]

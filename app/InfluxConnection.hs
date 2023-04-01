@@ -1,17 +1,24 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-missing-local-signatures #-}
+{-# OPTIONS_GHC -Wno-unsafe #-} -- because networking
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Unsafe #-} 
+
 module InfluxConnection(
     sendStats
 ) where
 
+import Prelude (String, Int, IO, Maybe (Nothing, Just), Foldable (foldr, foldMap), Either (Left, Right), Bool (False, True), map, ($), (++), fromIntegral, (.), Show (show))
 import Common ( ArchiveStatus(metrics, success), InfluxMetric(measurement, tags, field, timestamp) )
 import Network.Socket ( SockAddr, Socket )
 import Network.Run.UDP ( runUDPClient )
 
 import Database.InfluxDB ( Line(Line), Field(FieldBool, FieldInt), HasServer (server) )
-import Database.InfluxDB.Types ( Measurement, Key, LineField, Server (..) )
-import qualified Database.InfluxDB.Write as HTTP
-import qualified Database.InfluxDB.Write.UDP as UDP
+import Database.InfluxDB.Types ( Measurement, Key, LineField, Server(Server, _host, _port, _ssl) )
+import Database.InfluxDB.Write qualified as HTTP
+import Database.InfluxDB.Write.UDP qualified as UDP
 import Data.String ( IsString(fromString) )
 import Data.Map ( Map, fromList )
 import System.Exit (die)
@@ -27,9 +34,11 @@ _archiveStatusToMetric aS = if success aS
     else Nothing
 
 _writeUDPMetrics :: (Foldable f) => f ArchiveStatus -> UDP.WriteParams -> IO ()
-_writeUDPMetrics archiveStatusF params = do
+_writeUDPMetrics archiveStatusF params =
     -- write the metrics (potentially into the UDP void)
     foldMap (_writeUDPMetricsF params . metrics) archiveStatusF
+
+    -- Not inlinable because GHC.Base.$fMonoidIO is not inlinable
 
     -- Can't do this because https://github.com/maoe/influxdb-haskell/issues/92
     -- UDP.writeBatch params metricList
@@ -59,7 +68,7 @@ _lineFromMetric metric = do
     Line m t f ts
 
 writeHTTPMetrics :: (Foldable f) => f ArchiveStatus -> HTTP.WriteParams -> IO ()
-writeHTTPMetrics archiveStatusF params = do
+writeHTTPMetrics archiveStatusF params =
     HTTP.writeBatch params $
         map _lineFromMetric $
         foldr _accumulateMetrics [] archiveStatusF
@@ -83,3 +92,5 @@ sendStats "udp" host port s = getUDPConnection host port (doUDPClient s)
 sendStats "http" host port s = doHTTPClient host port False s
 sendStats "https" host port s = doHTTPClient host port True s
 sendStats unknown _ _ _ = die $ "Unknown protocol: " ++ unknown
+
+-- sendStats is not inlinable, see note above

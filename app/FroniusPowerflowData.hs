@@ -1,16 +1,23 @@
+{-# OPTIONS_GHC -Wno-unsafe #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Unsafe #-}
 
 module FroniusPowerflowData(
     PowerflowBody(..),
     PowerflowEntry(..)
 ) where
 
+import Prelude (String, Int, Show, Monad (return), ($))
 import GHC.Generics (Generic)
 import Data.Map (Map)
-import Data.Aeson ((.:), (.=), withObject, object, FromJSON(parseJSON), ToJSON(toJSON), Value)
+import Data.Aeson ((.:), (.=), withObject, object, FromJSON(parseJSON), ToJSON(toJSON))
+import Data.Aeson.Types (Parser, Value)
 
-import FroniusCommon (HeadData(..))
+import FroniusCommon (HeadData)
+import Data.Kind (Type)
 
 -- powerflow entry example
 {-
@@ -50,11 +57,12 @@ import FroniusCommon (HeadData(..))
    }
 -}
 
+type PowerflowBody :: Type
 data PowerflowBody = PowerflowBody
     { inverters :: Map String (Map String Int),
       site      :: Map String Value,
       version   :: String
-    } deriving (Generic, Show)
+    } deriving stock (Generic, Show)
 
 instance ToJSON PowerflowBody where
     toJSON (PowerflowBody inverters site version) = object
@@ -70,17 +78,19 @@ instance FromJSON PowerflowBody where
         return (PowerflowBody {inverters = inverters, site = site, version = version})
 
 
+type PowerflowEntry :: Type
 data PowerflowEntry = PowerflowEntry
     { bodyPF :: PowerflowBody,
       headPF :: HeadData
-    } deriving (Generic, Show)
+    } deriving stock (Generic, Show)
 
 instance FromJSON PowerflowEntry where
+    parseJSON :: Value -> Parser PowerflowEntry
     parseJSON = withObject "PowerflowEntry" $ \v -> do
         bodyPF <-  v .: "Body"
         headPF <- v .: "Head"
         return (PowerflowEntry {bodyPF = bodyPF, headPF = headPF})
 
 instance ToJSON PowerflowEntry where
+    toJSON :: PowerflowEntry -> Value
     toJSON (PowerflowEntry body headData) = object ["Body" .= body, "Head" .= headData]
-

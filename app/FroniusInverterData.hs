@@ -1,16 +1,22 @@
+{-# OPTIONS_GHC -Wno-unsafe #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Unsafe #-}
 
 module FroniusInverterData(
     InverterStat(..),
     InverterEntry(..)
 ) where
 
+import Prelude (String, Int, Show, Monad (return), ($))
 import GHC.Generics (Generic)
 import Data.Map (Map)
-import Data.Aeson ((.:), (.=), withObject, object, FromJSON(parseJSON), ToJSON(toJSON))
+import Data.Aeson ((.:), (.=), withObject, object, FromJSON(parseJSON), ToJSON(toJSON), Value)
 
-import FroniusCommon
+import FroniusCommon ( HeadData )
+import Data.Kind (Type)
 
 -- Inverter Entry example
 {-
@@ -54,10 +60,11 @@ import FroniusCommon
    }
 -}
 
+type InverterStat :: Type
 data InverterStat = InverterStat {
     unit   :: String,
     values :: Map String Int
-} deriving (Generic, Show)
+} deriving stock (Generic, Show)
 
 instance FromJSON InverterStat where
     parseJSON = withObject "InverterStat" $ \v -> do
@@ -69,10 +76,11 @@ instance ToJSON InverterStat where
     toJSON (InverterStat unit values) = object ["Unit" .= unit, "Values" .= values]
 
 
+type InverterEntry :: Type
 data InverterEntry = InverterEntry
     { bodyIE   :: Map String InverterStat,
       headIE   :: HeadData
-    } deriving (Generic, Show)
+    } deriving stock (Generic, Show)
 
 instance FromJSON InverterEntry where
     parseJSON = withObject "InverterEntry" $ \v -> do
@@ -81,4 +89,5 @@ instance FromJSON InverterEntry where
         return (InverterEntry {bodyIE = bodyIE, headIE = headIE})
 
 instance ToJSON InverterEntry where
+    toJSON :: InverterEntry -> Value
     toJSON (InverterEntry bodyIE headIE) = object ["Body" .= bodyIE, "Head" .= headIE]

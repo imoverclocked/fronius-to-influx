@@ -1,21 +1,41 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Unsafe #-}
 
-module Archive where
+module Archive(
+    Decompressor,
+    getDecompressor,
+    processArchive,
+) where
 
-import Common
+import Prelude
+    (
+        String,
+        IO,
+        Either (Left, Right),
+        Monad (return),
+        Show (show),
+        Bool (True, False),
+        ($),
+        otherwise,
+        id
+    )
+import Common ( ProcessEntry, ArchiveStatus (ArchiveStatus, path, realFile, success, msg, metrics), ArchiveStatusStream )
 
-import qualified Codec.Compression.GZip as GZip
-import qualified Codec.Compression.Lzma as Lzma
-import qualified Codec.Compression.Zlib as Zlib
-import Data.List (isSuffixOf)
+import Codec.Compression.GZip qualified as GZip
+import Codec.Compression.Lzma qualified as Lzma
+import Codec.Compression.Zlib qualified as Zlib
+import Data.List (isSuffixOf, (++))
 
 import Archive.FFI (readArchiveBytes, Entry)
 import Codec.Archive ( Entry(content, filepath), EntryContent(NormalFile) )
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BSL
-import qualified Streaming as S
-import qualified Streaming.Prelude as SP
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as BSL
+import Streaming qualified as S
+import Streaming.Prelude qualified as SP
+import Data.Kind (Type)
 
+type Decompressor :: Type
 type Decompressor = BSL.ByteString -> BSL.ByteString
 
 getDecompressor :: String -> Decompressor
@@ -53,7 +73,7 @@ entryToArchiveStatus :: ProcessEntry -> String -> EntryContent String BS.ByteStr
 entryToArchiveStatus entryProcessor filepath content =
     case content of
         NormalFile e -> entryProcessor filepath e
-        _ -> do ArchiveStatus{
+        _ -> ArchiveStatus{
             path = filepath,
             realFile = False,
             success = True,

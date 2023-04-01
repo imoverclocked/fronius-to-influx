@@ -1,23 +1,35 @@
 {-# OPTIONS_GHC -fno-cse #-}
+{-# OPTIONS_GHC -Wno-missing-local-signatures #-}
+{-# OPTIONS_GHC -Wno-unsafe #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE Unsafe #-}
 
-module Main where
+module Main(main) where
 
+import Prelude (
+   Bool(False, True), FilePath, Int, IO, Ord ((>)), Show, String,
+   filter, fst, id, map, mapM, mapM_, not, null, otherwise, return, show,
+   ($), (+), (++), (.), (&&)
+   )
 import Data.List ( isSuffixOf, isInfixOf )
-import System.Console.CmdArgs ( Data, Typeable, (&=), cmdArgs, args, details, help, summary, typ, Default(def) )
+import System.Console.CmdArgs ( Data, (&=), cmdArgs, args, details, help, summary, typ, Default(def) )
 import System.Directory ( doesDirectoryExist, listDirectory, makeRelativeToCurrentDirectory, createDirectoryIfMissing, renameFile, removeDirectory )
-import Common ( ProcessEntry, ArchiveStatus(..), ArchiveStatusStream )
+import Common ( ProcessEntry, ArchiveStatus(ArchiveStatus, realFile, path, success, msg, metrics), ArchiveStatusStream )
 import Archive ( processArchive )
 import InfluxData ( powerFlow, powerFlowFromBS, inverter, inverterFromBS )
 import InfluxConnection ( sendStats )
 import System.Exit ( exitSuccess, die )
-import qualified Streaming as S
-import qualified Streaming.Prelude as SP
+import Streaming qualified as S
+import Streaming.Prelude qualified as SP
 import Data.IORef ( atomicModifyIORef, newIORef, readIORef, IORef )
 import Control.Monad ( unless, when )
 import GHC.IO.Handle ( hPutStr )
 import GHC.IO.StdHandles ( stderr )
 import System.FilePath (dropFileName, pathSeparator)
+import Data.Kind (Type)
 
 processDir :: String -> ArchiveStatusStream
 processDir path = do
@@ -26,10 +38,10 @@ processDir path = do
 
 _flattenStreams :: SP.Stream (SP.Of ArchiveStatusStream) IO () -> IO ArchiveStatusStream
 _flattenStreams sOfS = do
-   aOfS <- SP.toList sOfS -- Of [ArchiveStatusStream] ()
-   let aOfS' = fst $ SP.lazily aOfS -- [ArchiveStatusStream]
-   let s = SP.each aOfS' -- Stream (Of [ArchiveStatusStream]) IO ()
-   return $ SP.for s id -- IO ArchiveStatusStream
+   aOfS <- SP.toList sOfS           :: IO (SP.Of [ArchiveStatusStream] ())
+   let aOfS' = fst $ SP.lazily aOfS :: [ArchiveStatusStream]
+   let s = SP.each aOfS'            -- :: SP.Stream (SP.Of [ArchiveStatusStream]) IO ()
+   return $ SP.for s id
 
 _streamLS :: String -> IO (SP.Stream (SP.Of FilePath) IO ())
 _streamLS path = do
@@ -67,9 +79,9 @@ processPathFromBS path bs
 
 _incSuccessFail :: IORef Int -> IORef Int -> ArchiveStatus -> IO ()
 _incSuccessFail successC failC archiveStatus = if success archiveStatus
-   then atomicModifyIORef successC increment
-   else atomicModifyIORef failC increment
-   where increment a = (a+1, ())
+   then atomicModifyIORef successC incrementA
+   else atomicModifyIORef failC incrementA
+   where incrementA a = (a + 1, ())
 
 _recordFailedEntries :: IORef [ArchiveStatus] -> ArchiveStatus -> IO ()
 _recordFailedEntries archiveStatusList archiveStatus = unless (success archiveStatus)
@@ -82,7 +94,7 @@ _recordProcessedPaths processedPaths archiveStatus = when (success archiveStatus
    where appendS path paths = (path : paths, ())
 
 _moveProcessedFiles :: FilePath -> [FilePath] -> IO ()
-_moveProcessedFiles destinationProcessedDir finalProcessedPaths = do
+_moveProcessedFiles destinationProcessedDir finalProcessedPaths =
    if not . null $ destinationProcessedDir
       then do
          relativePaths <- mapM makeRelativeToCurrentDirectory finalProcessedPaths
@@ -109,13 +121,15 @@ _moveProcessedFiles destinationProcessedDir finalProcessedPaths = do
       else
          hPutStr stderr "Leaving files in place.\n"
 
+type FroniusToInflux :: Type
 data FroniusToInflux = FroniusToInflux {
    influx_protocol :: String,
    host :: String,
    port :: Int,
    processed :: FilePath,
    files :: [FilePath]
-   } deriving (Show, Data, Typeable)
+   }
+   deriving stock (Show, Data)
 
 defaultArgs :: FroniusToInflux
 defaultArgs = FroniusToInflux {

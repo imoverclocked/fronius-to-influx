@@ -56,7 +56,8 @@ extra-doc-files:    CHANGELOG.md
 -- extra-source-files:
 
 common warnings
-    ghc-options: -Wall
+    ghc-options: -Weverything
+                 -Wno-all-missed-specialisations
 
 executable fronius-to-influx
     -- Import common warning flags.
@@ -82,11 +83,9 @@ executable fronius-to-influx
     build-depends:    aeson,
                       archive-libarchive,
                       base >=4.14.3.0,
-                      base-compat-batteries,
                       bytestring,
                       cmdargs,
                       containers,
-                      deepseq,
                       directory,
                       filepath,
                       influxdb,
@@ -100,7 +99,6 @@ executable fronius-to-influx
                       text,
                       time,
                       timerep,
-                      vector,
                       zlib,
 
     -- Directories containing source files.
@@ -121,7 +119,6 @@ test-suite fronius-to-influx-tests
                       FroniusPowerflowData
     build-depends:    aeson,
                       base >=4.14.3.0,
-                      base-compat-batteries,
                       bytestring,
                       containers,
                       HUnit,
