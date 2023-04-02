@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- because aeson is unsafe
 {-# LANGUAGE Unsafe #-}
