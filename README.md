@@ -31,6 +31,12 @@ few hundred kB.
 The tool expects data files to be named as *.powerflow and *.inverter
 ```
 
+## Examples ##
+
+| Image | Description |
+|-------|-------------|
+| ![Fronius data in Grafana](doc/fronius-data-grafana.png) | Data published to an ftp server by a DataManager 2.0 card. fronius-to-influxdb is run on a schedule which pushes the data to InfluxDB. This is the resulting grafana view of instantaneous power of one inverter (green) and overall site power produced (yellow.) <br/><br/> Tags have been added in grafana to show a power outage event.|
+
 ## Building ##
 
 I used cabal `3.8.1.0` and ghc `9.2.7` on macOS for development. You may be able to get it to work with older or newer environments. Archive decompression requires linking against native libs.
