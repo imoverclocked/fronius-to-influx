@@ -146,16 +146,5 @@ Similar is done for powerflow data.
 ### Code formatting ###
 
 ```
-fourmolu --mode inplace \
-  --function-arrows leading \
-  --comma-style trailing \
-  --import-export-style diff-friendly \
-  --indent-wheres false \
-  --record-brace-space true \
-  --newlines-between-decls 1 \
-  --haddock-style multi-line \
-  --let-style newline \
-  --in-style right-align \
-  --respectful false \
-  app
+fourmolu --mode inplace app
 ```
