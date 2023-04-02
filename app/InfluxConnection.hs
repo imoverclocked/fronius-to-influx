@@ -23,7 +23,21 @@ import Database.InfluxDB.Write.UDP qualified as UDP
 import Network.Run.UDP (runUDPClient)
 import Network.Socket (SockAddr, Socket)
 import System.Exit (die)
-import Prelude (Bool (False, True), Either (Left, Right), Foldable (foldMap, foldr), IO, Int, Maybe (Just, Nothing), Show (show), String, fromIntegral, map, ($), (++), (.))
+import Prelude (
+    Bool (False, True),
+    Either (Left, Right),
+    Foldable (foldMap, foldr),
+    IO,
+    Int,
+    Maybe (Just, Nothing),
+    Show (show),
+    String,
+    fromIntegral,
+    map,
+    ($),
+    (++),
+    (.),
+ )
 
 getUDPConnection :: String -> Int -> (Socket -> SockAddr -> IO m) -> IO m
 getUDPConnection host port = runUDPClient host (show port)
@@ -36,13 +50,12 @@ _archiveStatusToMetric aS =
 
 _writeUDPMetrics :: (Foldable f) => f ArchiveStatus -> UDP.WriteParams -> IO ()
 _writeUDPMetrics archiveStatusF params =
+    {-
+        Can't do this because https://github.com/maoe/influxdb-haskell/issues/92
+        UDP.writeBatch params metricList
+    -}
     -- write the metrics (potentially into the UDP void)
     foldMap (_writeUDPMetricsF params . metrics) archiveStatusF
-
--- Not inlinable because GHC.Base.$fMonoidIO is not inlinable
-
--- Can't do this because https://github.com/maoe/influxdb-haskell/issues/92
--- UDP.writeBatch params metricList
 
 _writeUDPMetricsF :: (Foldable f) => UDP.WriteParams -> f InfluxMetric -> IO ()
 _writeUDPMetricsF params = foldMap (UDP.write params . _lineFromMetric)
@@ -61,9 +74,7 @@ _lineFromMetric metric = do
     -- Type wrangling
     let
         m = fromString (measurement metric) :: Measurement
-    let
         t = Data.Map.fromList [(fromString k, fromString v) | (k, v) <- tags metric]
-    let
         f =
             Data.Map.fromList
                 [ case field metric of
@@ -71,7 +82,6 @@ _lineFromMetric metric = do
                     (k, Right b) -> (fromString k, FieldBool b)
                 ]
                 :: Map Key LineField
-    let
         ts = timestamp metric
 
     Line m t f ts

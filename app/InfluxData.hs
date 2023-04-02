@@ -68,7 +68,6 @@ powerflowSiteMetrics siteMap = do
             mapMaybe maybeStringValue $
                 toList siteMap
                     ++ [("id", "site")]
-    let
         siteFields = mapMaybe maybeNumericValue $ toList siteMap
 
     [(siteTags, (k, Left v)) | (k, v) <- siteFields]
@@ -129,16 +128,10 @@ powerFlowFromBS :: String -> BS.ByteString -> ArchiveStatus
 powerFlowFromBS path content = do
     let
         entry = decode $ BSL.fromStrict content :: Maybe PowerflowEntry
-    let
         headData = fmap PowerflowEntry.headPF entry
-    let
         bodyData = fmap PowerflowEntry.bodyPF entry
-    let
         headTags = maybe [] tagsFromHead headData
-    let
         timestamp = timestampFromHead =<< headData
-
-    let
         metrics = maybe [] (generatePowerflowMetrics timestamp headTags) bodyData
 
     ArchiveStatus
@@ -163,16 +156,10 @@ inverterFromBS :: String -> BS.ByteString -> ArchiveStatus
 inverterFromBS path content = do
     let
         entry = decode $ BSL.fromStrict content :: Maybe InverterEntry
-    let
         headData = fmap FroniusInverterData.headIE entry
-    let
         bodyData = fmap FroniusInverterData.bodyIE entry
-
-    let
         headTags = maybe [] tagsFromHead headData
-    let
         timestamp = timestampFromHead =<< headData
-    let
         inverterMetrics = maybe [] (generateInverterMetrics timestamp headTags) bodyData
 
     ArchiveStatus

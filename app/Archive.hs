@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Unsafe #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# OPTIONS_GHC -Wno-unsafe #-}
 
 module Archive (
     Decompressor,
@@ -13,7 +14,11 @@ import Codec.Archive (Entry (content, filepath), EntryContent (NormalFile))
 import Codec.Compression.GZip qualified as GZip
 import Codec.Compression.Lzma qualified as Lzma
 import Codec.Compression.Zlib qualified as Zlib
-import Common (ArchiveStatus (ArchiveStatus, metrics, msg, path, realFile, success), ArchiveStatusStream, ProcessEntry)
+import Common (
+    ArchiveStatus (ArchiveStatus, metrics, msg, path, realFile, success),
+    ArchiveStatusStream,
+    ProcessEntry,
+ )
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
 import Data.Kind (Type)
@@ -54,7 +59,6 @@ _processArchive path entryProcessor = do
     archiveBSL <- BSL.readFile path
     let
         archiveDecodedBSL = decompressor archiveBSL
-    let
         baseArchiveStatus =
             ArchiveStatus
                 { path = path,

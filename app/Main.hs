@@ -62,7 +62,6 @@ _flattenStreams sOfS = do
     aOfS <- SP.toList sOfS :: IO (SP.Of [ArchiveStatusStream] ())
     let
         aOfS' = fst $ SP.lazily aOfS :: [ArchiveStatusStream]
-    let
         s = SP.each aOfS' -- :: SP.Stream (SP.Of [ArchiveStatusStream]) IO ()
     return $ SP.for s id
 
