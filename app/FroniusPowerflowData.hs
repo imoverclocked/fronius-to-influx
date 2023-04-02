@@ -67,6 +67,7 @@ data PowerflowBody = PowerflowBody
     deriving stock (Generic, Show)
 
 instance ToJSON PowerflowBody where
+    toJSON :: PowerflowBody -> Value
     toJSON (PowerflowBody inverters site version) =
         object
             [ "Inverters" .= inverters,
@@ -75,6 +76,7 @@ instance ToJSON PowerflowBody where
             ]
 
 instance FromJSON PowerflowBody where
+    parseJSON :: Value -> Parser PowerflowBody
     parseJSON = withObject "PowerflowBody" $ \v -> do
         inverters <- v .: "Inverters"
         site <- v .: "Site"

@@ -12,7 +12,8 @@ module FroniusInverterData (
     InverterEntry (..),
 ) where
 
-import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), Value, object, withObject, (.:), (.=))
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), object, withObject, (.:), (.=))
+import Data.Aeson.Types (Parser, Value)
 import Data.Kind (Type)
 import Data.Map (Map)
 import FroniusCommon (HeadData)
@@ -69,12 +70,14 @@ data InverterStat = InverterStat
     deriving stock (Generic, Show)
 
 instance FromJSON InverterStat where
+    parseJSON :: Value -> Parser InverterStat
     parseJSON = withObject "InverterStat" $ \v -> do
         unit <- v .: "Unit"
         values <- v .: "Values"
         return (InverterStat {unit = unit, values = values})
 
 instance ToJSON InverterStat where
+    toJSON :: InverterStat -> Value
     toJSON (InverterStat unit values) = object ["Unit" .= unit, "Values" .= values]
 
 type InverterEntry :: Type
@@ -85,6 +88,7 @@ data InverterEntry = InverterEntry
     deriving stock (Generic, Show)
 
 instance FromJSON InverterEntry where
+    parseJSON :: Value -> Parser InverterEntry
     parseJSON = withObject "InverterEntry" $ \v -> do
         bodyIE <- v .: "Body"
         headIE <- v .: "Head"
