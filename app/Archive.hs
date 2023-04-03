@@ -6,8 +6,6 @@
 {-# OPTIONS_GHC -Wno-unsafe #-}
 
 module Archive (
-    Decompressor,
-    getDecompressor,
     processArchive,
 ) where
 

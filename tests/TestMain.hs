@@ -1,14 +1,16 @@
 module Main where
 
-import System.Exit     ( exitFailure, exitSuccess )
-import Test.HUnit      ( runTestTT, Counts(failures, errors), Test(TestList) )
-
-import TestFroniusData ( froniusDataTests )
+import System.Exit (exitFailure, exitSuccess)
+import Test.HUnit (Counts (errors, failures), Test (TestList), runTestTT)
+import TestArchive (archiveDataTests)
+import TestFroniusData (froniusDataTests)
 
 tests :: Test
-tests = TestList [
-    froniusDataTests
-    ]
+tests =
+    TestList
+        [ froniusDataTests,
+          archiveDataTests
+        ]
 
 main :: IO Counts
 main = do

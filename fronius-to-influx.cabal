@@ -112,14 +112,24 @@ test-suite fronius-to-influx-tests
     type: exitcode-stdio-1.0
     main-is: TestMain.hs
     hs-source-dirs:   tests, app
-    other-modules:    TestFroniusData,
+    other-modules:
+                      TestArchive,
+                      TestFroniusData,
+                      Archive,
+                      Common,
                       FroniusData,
                       FroniusCommon,
                       FroniusInverterData,
                       FroniusPowerflowData
     build-depends:    aeson,
+                      archive-libarchive,
                       base >=4.14.3.0,
                       bytestring,
                       containers,
                       HUnit,
-                      text
+                      libarchive,
+                      lzma,
+                      streaming,
+                      text,
+                      time,
+                      zlib
