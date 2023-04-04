@@ -5,7 +5,7 @@ module TestInfluxData (influxDataTests) where
 import Common (ArchiveStatus (..), InfluxMetric (..))
 import Data.Time (zonedTimeToUTC)
 import Data.Time.RFC3339 (parseTimeRFC3339)
-import InfluxData ( inverterFromBS, powerFlowFromBS )
+import InfluxData (inverterFromBS, powerFlowFromBS)
 import Test.HUnit (Test (..), assertEqual)
 
 testPowerFlowFromBS :: Test
@@ -20,8 +20,8 @@ testPowerFlowFromBS =
                         ( ArchiveStatus
                             { path = "/dev/null",
                               realFile = False,
-                              success = True,
-                              msg = "",
+                              success = False,
+                              msg = "Error in $: not enough input",
                               metrics = []
                             }
                         ),
@@ -33,8 +33,8 @@ testPowerFlowFromBS =
                         ( ArchiveStatus
                             { path = "/dev/null",
                               realFile = False,
-                              success = True,
-                              msg = "",
+                              success = False,
+                              msg = "Error in $: key \"Body\" not found",
                               metrics = []
                             }
                         ),

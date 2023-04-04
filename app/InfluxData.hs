@@ -17,7 +17,7 @@ import Common (
     ArchiveStatusStream,
     InfluxMetric (InfluxMetric, field, measurement, tags, timestamp),
  )
-import Data.Aeson (Value (Number, String), decode)
+import Data.Aeson (Value (Number, String), decode, eitherDecode)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
 import Data.Map (Map, toList)
@@ -35,7 +35,7 @@ import Streaming.Prelude qualified as SP
 import Prelude (
     Applicative (pure),
     Bool (False, True),
-    Either (Left),
+    Either (Left, Right),
     Functor (fmap),
     IO,
     Int,
@@ -128,20 +128,24 @@ _powerFlow path = do
 powerFlowFromBS :: String -> BS.ByteString -> ArchiveStatus
 powerFlowFromBS path content = do
     let
-        entry = decode $ BSL.fromStrict content :: Maybe PowerflowEntry
-        headData = fmap PowerflowEntry.headPF entry
-        bodyData = fmap PowerflowEntry.bodyPF entry
-        headTags = maybe [] tagsFromHead headData
-        timestamp = timestampFromHead =<< headData
-        metrics = maybe [] (generatePowerflowMetrics timestamp headTags) bodyData
+        entryDecode = eitherDecode $ BSL.fromStrict content :: Either String PowerflowEntry
+    case entryDecode of
+        Left msg -> ArchiveStatus {path = path, success = False, msg = msg, realFile = False, metrics = []}
+        Right entry -> do
+            let
+                headData = PowerflowEntry.headPF entry
+                bodyData = PowerflowEntry.bodyPF entry
+                headTags = tagsFromHead headData
+                timestamp = timestampFromHead headData
+                metrics = generatePowerflowMetrics timestamp headTags bodyData
 
-    ArchiveStatus
-        { path = path,
-          realFile = False,
-          success = True,
-          msg = "",
-          metrics = metrics
-        }
+            ArchiveStatus
+                { path = path,
+                  realFile = False,
+                  success = True,
+                  msg = "",
+                  metrics = metrics
+                }
 
 inverter :: String -> ArchiveStatusStream
 inverter path = S.effect $ _inverter path
