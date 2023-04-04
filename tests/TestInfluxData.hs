@@ -79,8 +79,8 @@ testInverterFromBS =
                         ( ArchiveStatus
                             { path = "/dev/null",
                               realFile = False,
-                              success = True,
-                              msg = "",
+                              success = False,
+                              msg = "Error in $: not enough input",
                               metrics = []
                             }
                         ),
@@ -92,21 +92,8 @@ testInverterFromBS =
                         ( ArchiveStatus
                             { path = "/dev/null",
                               realFile = False,
-                              success = True,
-                              msg = "",
-                              metrics = []
-                            }
-                        ),
-              TestCase $ -- TODO: this should set success=False (and similar for powerflow)
-                do
-                    assertEqual
-                        "incomplete object"
-                        (inverterFromBS "/dev/null" "{")
-                        ( ArchiveStatus
-                            { path = "/dev/null",
-                              realFile = False,
-                              success = True,
-                              msg = "",
+                              success = False,
+                              msg = "Error in $: key \"Body\" not found",
                               metrics = []
                             }
                         ),

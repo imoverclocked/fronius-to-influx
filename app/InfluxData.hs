@@ -160,17 +160,21 @@ _inverter path = do
 inverterFromBS :: String -> BS.ByteString -> ArchiveStatus
 inverterFromBS path content = do
     let
-        entry = decode $ BSL.fromStrict content :: Maybe InverterEntry
-        headData = fmap FroniusInverterData.headIE entry
-        bodyData = fmap FroniusInverterData.bodyIE entry
-        headTags = maybe [] tagsFromHead headData
-        timestamp = timestampFromHead =<< headData
-        inverterMetrics = maybe [] (generateInverterMetrics timestamp headTags) bodyData
+        entryDecode = eitherDecode $ BSL.fromStrict content :: Either String InverterEntry
+    case entryDecode of
+        Left msg -> ArchiveStatus {path = path, success = False, msg = msg, realFile = False, metrics = []}
+        Right entry -> do
+            let
+                headData = FroniusInverterData.headIE entry
+                bodyData = FroniusInverterData.bodyIE entry
+                headTags = tagsFromHead headData
+                timestamp = timestampFromHead headData
+                inverterMetrics = generateInverterMetrics timestamp headTags bodyData
 
-    ArchiveStatus
-        { path = path,
-          realFile = False,
-          success = True,
-          msg = "",
-          metrics = inverterMetrics
-        }
+            ArchiveStatus
+                { path = path,
+                  realFile = False,
+                  success = True,
+                  msg = "",
+                  metrics = inverterMetrics
+                }
