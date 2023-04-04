@@ -17,7 +17,7 @@ import Data.ByteString qualified as BS
 import Data.Kind (Type)
 import Data.Time (UTCTime)
 import Streaming.Prelude qualified as SP
-import Prelude (Bool, Either, IO, Int, Maybe, Show, String)
+import Prelude (Bool, Either, Eq, IO, Int, Maybe, Show, String)
 
 type InfluxMetric :: Type
 data InfluxMetric = InfluxMetric
@@ -26,7 +26,7 @@ data InfluxMetric = InfluxMetric
       field :: (String, Either Int Bool),
       timestamp :: Maybe UTCTime
     }
-    deriving stock (Show)
+    deriving stock (Eq, Show)
 
 type ArchiveStatus :: Type
 data ArchiveStatus = ArchiveStatus
@@ -36,7 +36,7 @@ data ArchiveStatus = ArchiveStatus
       msg :: String,
       metrics :: [InfluxMetric]
     }
-    deriving stock (Show)
+    deriving stock (Eq, Show)
 
 type ProcessEntry :: Type
 type ProcessEntry = String -> BS.ByteString -> ArchiveStatus

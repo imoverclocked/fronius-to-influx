@@ -115,12 +115,14 @@ test-suite fronius-to-influx-tests
     other-modules:
                       TestArchive,
                       TestFroniusData,
+                      TestInfluxData,
                       Archive,
                       Common,
                       FroniusData,
                       FroniusCommon,
                       FroniusInverterData,
-                      FroniusPowerflowData
+                      FroniusPowerflowData,
+                      InfluxData
     build-depends:    aeson,
                       archive-libarchive,
                       base >=4.14.3.0,
@@ -129,7 +131,9 @@ test-suite fronius-to-influx-tests
                       HUnit,
                       libarchive,
                       lzma,
+                      scientific,
                       streaming,
                       text,
                       time,
+                      timerep,
                       zlib

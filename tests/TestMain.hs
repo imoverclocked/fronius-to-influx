@@ -4,12 +4,14 @@ import System.Exit (exitFailure, exitSuccess)
 import Test.HUnit (Counts (errors, failures), Test (TestList), runTestTT)
 import TestArchive (archiveDataTests)
 import TestFroniusData (froniusDataTests)
+import TestInfluxData (influxDataTests)
 
 tests :: Test
 tests =
     TestList
         [ froniusDataTests,
-          archiveDataTests
+          archiveDataTests,
+          influxDataTests
         ]
 
 main :: IO Counts
