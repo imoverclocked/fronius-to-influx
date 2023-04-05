@@ -3,10 +3,12 @@
 module TestInfluxData (influxDataTests) where
 
 import Common (ArchiveStatus (..), InfluxMetric (..))
+import Control.Exception (try)
 import Data.Time (zonedTimeToUTC)
 import Data.Time.RFC3339 (parseTimeRFC3339)
-import InfluxData (inverterFromBS, powerFlowFromBS)
-import Test.HUnit (Test (..), assertEqual)
+import InfluxData (inverter, inverterFromBS, powerFlow, powerFlowFromBS)
+import Streaming.Prelude qualified as SP
+import Test.HUnit (Test (..), assertBool, assertEqual, assertFailure)
 
 testPowerFlowFromBS :: Test
 testPowerFlowFromBS =
@@ -121,5 +123,50 @@ testInverterFromBS =
                         )
             ]
 
+testPowerflow :: Test
+testPowerflow =
+    TestLabel "powerflow - " $
+        TestList
+            [ TestCase $ do
+                let
+                    archiveStatusStream = powerFlow "does-not-exist.powerflow"
+                result <- try (SP.length archiveStatusStream)
+                case result of
+                    Left (_ :: IOError) -> assertBool "We returned an error about an empty file" True
+                    Right _ -> assertFailure "missing file should produce error",
+              TestCase $ do
+                let
+                    archiveStatusStream = powerFlow "tests/fixtures/test.powerflow"
+                archiveStatusList <- SP.toList_ archiveStatusStream
+                archiveStatus : archiveStatusRest <- SP.toList_ archiveStatusStream
+                assertEqual "length of stream" 0 $ length archiveStatusRest
+                assertBool "file is real" $ realFile archiveStatus
+            ]
+
+testInverter :: Test
+testInverter =
+    TestLabel "inverter - " $
+        TestList
+            [ TestCase $ do
+                let
+                    archiveStatusStream = inverter "does-not-exist.inverter"
+                result <- try (SP.length archiveStatusStream)
+                case result of
+                    Left (_ :: IOError) -> assertBool "We returned an error about an empty file" True
+                    Right _ -> assertFailure "missing file should produce error",
+              TestCase $ do
+                let
+                    archiveStatusStream = inverter "tests/fixtures/test.inverter"
+                archiveStatus : archiveStatusRest <- SP.toList_ archiveStatusStream
+                assertEqual "length of stream" 0 $ length archiveStatusRest
+                assertBool "file is real" $ realFile archiveStatus
+            ]
+
 influxDataTests :: Test
-influxDataTests = TestList [testInverterFromBS, testPowerFlowFromBS]
+influxDataTests =
+    TestList
+        [ testInverterFromBS,
+          testPowerFlowFromBS,
+          testInverter,
+          testPowerflow
+        ]
