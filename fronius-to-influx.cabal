@@ -59,35 +59,23 @@ common warnings
     ghc-options: -Weverything
                  -Wno-all-missed-specialisations
 
-executable fronius-to-influx
-    -- Import common warning flags.
-    import:           warnings
+library
+    exposed-modules:  F2I.Archive,
+                      F2I.Common,
+                      F2I.InfluxConnection,
+                      F2I.InfluxData,
+                      F2I.FroniusData,
+                      F2I.FroniusCommon,
+                      F2I.FroniusInverterData,
+                      F2I.FroniusPowerflowData
+    hs-source-dirs:   lib
 
-    -- .hs or .lhs file containing the Main module.
-    main-is:          Main.hs
-
-    -- Modules included in this executable, other than Main.
-    other-modules:    Archive,
-                      Common,
-                      InfluxConnection,
-                      InfluxData,
-                      FroniusData,
-                      FroniusCommon,
-                      FroniusInverterData,
-                      FroniusPowerflowData
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-
-    -- Other library packages from which modules are imported.
-    build-depends:    aeson,
+    build-depends:
+                      aeson,
                       archive-libarchive,
                       base >=4.14.3.0,
                       bytestring,
-                      cmdargs,
                       containers,
-                      directory,
-                      filepath,
                       influxdb,
                       libarchive,
                       lens,
@@ -101,30 +89,50 @@ executable fronius-to-influx
                       timerep,
                       zlib,
 
+executable fronius-to-influx
+    -- Import common warning flags.
+    import:           warnings
+
+    -- .hs or .lhs file containing the Main module.
+    main-is:          Main.hs
+
+    -- Other library packages from which modules are imported.
+    build-depends:
+                      base >=4.14.3.0,
+                      cmdargs,
+                      directory,
+                      filepath,
+                      fronius-to-influx,
+                      streaming,
+
     -- Directories containing source files.
-    hs-source-dirs:   app
+    hs-source-dirs:   cli
 
     -- Base language which the package is written in.
+    default-language: GHC2021
+
+executable fronius-to-influxd
+    import:           warnings
+    main-is:          Main.hs
+    build-depends:
+                      base >=4.14.3.0,
+                      cmdargs,
+                      fronius-to-influx,
+    hs-source-dirs:   daemon
     default-language: GHC2021
 
 test-suite fronius-to-influx-tests
     default-language: GHC2021
     type: exitcode-stdio-1.0
     main-is: TestMain.hs
-    hs-source-dirs:   tests, app
+    hs-source-dirs:   tests
     other-modules:
                       TestArchive,
                       TestFroniusData,
                       TestInfluxData,
-                      Archive,
-                      Common,
-                      FroniusData,
-                      FroniusCommon,
-                      FroniusInverterData,
-                      FroniusPowerflowData,
-                      InfluxData
-    build-depends:    aeson,
-                      archive-libarchive,
+    build-depends:
+                      fronius-to-influx,
+                      aeson,
                       base >=4.14.3.0,
                       bytestring,
                       containers,
@@ -136,4 +144,4 @@ test-suite fronius-to-influx-tests
                       text,
                       time,
                       timerep,
-                      zlib
+                      zlib,

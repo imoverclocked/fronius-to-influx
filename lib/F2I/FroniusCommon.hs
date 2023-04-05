@@ -8,7 +8,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wno-unsafe #-}
 
-module FroniusCommon (
+module F2I.FroniusCommon (
     HeadData (..),
 ) where
 

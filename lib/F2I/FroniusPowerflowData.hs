@@ -7,7 +7,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wno-unsafe #-}
 
-module FroniusPowerflowData (
+module F2I.FroniusPowerflowData (
     PowerflowBody (..),
     PowerflowEntry (..),
 ) where
@@ -16,7 +16,7 @@ import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), object, withObject, (.
 import Data.Aeson.Types (Parser, Value)
 import Data.Kind (Type)
 import Data.Map (Map)
-import FroniusCommon (HeadData)
+import F2I.FroniusCommon (HeadData)
 import GHC.Generics (Generic)
 import Prelude (Int, Monad (return), Show, String, ($))
 

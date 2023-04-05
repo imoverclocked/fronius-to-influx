@@ -8,11 +8,10 @@
 -- because networking
 {-# OPTIONS_GHC -Wno-unsafe #-}
 
-module InfluxConnection (
+module F2I.InfluxConnection (
     sendStats,
 ) where
 
-import Common (ArchiveStatus (metrics, success), InfluxMetric (field, measurement, tags, timestamp))
 import Control.Lens ((&), (.~))
 import Data.Map (Map, fromList)
 import Data.String (IsString (fromString))
@@ -21,6 +20,7 @@ import Database.InfluxDB (Field (FieldBool, FieldInt), HasServer (server), Line 
 import Database.InfluxDB.Types (Key, LineField, Measurement, Server (Server, _host, _port, _ssl))
 import Database.InfluxDB.Write qualified as HTTP
 import Database.InfluxDB.Write.UDP qualified as UDP
+import F2I.Common (ArchiveStatus (metrics, success), InfluxMetric (field, measurement, tags, timestamp))
 import Network.Run.UDP (runUDPClient)
 import Network.Socket (SockAddr, Socket)
 import System.Exit (die)

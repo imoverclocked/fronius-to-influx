@@ -3,7 +3,7 @@
 module TestFroniusData (froniusDataTests) where
 
 import Data.Aeson (ToJSON (..), decode, encode)
-import FroniusData
+import F2I.FroniusData
 import Test.HUnit (Test (..), assertEqual, assertFailure)
 
 sampleInverterStrings =
@@ -43,18 +43,18 @@ froniusDataTests =
     TestList
         [ TestList $
             map
-                (\a -> TestLabel "InverterStat decode/encode" $ encdenc (decode a :: Maybe FroniusData.InverterStat) a)
+                (\a -> TestLabel "InverterStat decode/encode" $ encdenc (decode a :: Maybe F2I.FroniusData.InverterStat) a)
                 sampleInverterStatStrings,
           TestList $
             map
-                (\a -> TestLabel "HeadData decode/encode" $ encdenc (decode a :: Maybe FroniusData.HeadData) a)
+                (\a -> TestLabel "HeadData decode/encode" $ encdenc (decode a :: Maybe F2I.FroniusData.HeadData) a)
                 sampleHeadStrings,
           TestList $
             map
-                (\a -> TestLabel "InverterEntry decode/encode" $ encdenc (decode a :: Maybe FroniusData.InverterEntry) a)
+                (\a -> TestLabel "InverterEntry decode/encode" $ encdenc (decode a :: Maybe F2I.FroniusData.InverterEntry) a)
                 sampleInverterStrings,
           TestList $
             map
-                (\a -> TestLabel "Powerflow decode/encode" $ encdenc (decode a :: Maybe FroniusData.PowerflowEntry) a)
+                (\a -> TestLabel "Powerflow decode/encode" $ encdenc (decode a :: Maybe F2I.FroniusData.PowerflowEntry) a)
                 samplePowerflowStrings
         ]

@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -Wno-missing-import-lists #-}
 {-# OPTIONS_GHC -Wno-unsafe #-}
 
-module FroniusData (
+module F2I.FroniusData (
     HeadData (..),
     InverterStat (..),
     InverterEntry (..),
@@ -11,6 +11,6 @@ module FroniusData (
     PowerflowEntry (..),
 ) where
 
-import FroniusCommon (HeadData (..))
-import FroniusInverterData (InverterEntry (..), InverterStat (..))
-import FroniusPowerflowData (PowerflowBody (..), PowerflowEntry (..))
+import F2I.FroniusCommon (HeadData (..))
+import F2I.FroniusInverterData (InverterEntry (..), InverterStat (..))
+import F2I.FroniusPowerflowData (PowerflowBody (..), PowerflowEntry (..))

@@ -6,7 +6,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wno-inferred-safe-imports #-}
 
-module Common (
+module F2I.Common (
     ArchiveStatus (..),
     ArchiveStatusStream,
     InfluxMetric (..),

@@ -5,18 +5,13 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wno-unsafe #-}
 
-module InfluxData (
+module F2I.InfluxData (
     powerFlow,
     powerFlowFromBS,
     inverter,
     inverterFromBS,
 ) where
 
-import Common (
-    ArchiveStatus (ArchiveStatus, metrics, msg, path, realFile, success),
-    ArchiveStatusStream,
-    InfluxMetric (InfluxMetric, field, measurement, tags, timestamp),
- )
 import Data.Aeson (Value (Number, String), decode, eitherDecode)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
@@ -26,10 +21,15 @@ import Data.Scientific (toBoundedInteger)
 import Data.Text (unpack)
 import Data.Time (UTCTime, zonedTimeToUTC)
 import Data.Time.RFC3339 (parseTimeRFC3339)
-import FroniusCommon (HeadData, timestamp)
-import FroniusInverterData (InverterEntry (bodyIE, headIE), InverterStat (unit, values))
-import FroniusPowerflowData (PowerflowBody (inverters, site, version), PowerflowEntry)
-import FroniusPowerflowData qualified as PowerflowEntry
+import F2I.Common (
+    ArchiveStatus (ArchiveStatus, metrics, msg, path, realFile, success),
+    ArchiveStatusStream,
+    InfluxMetric (InfluxMetric, field, measurement, tags, timestamp),
+ )
+import F2I.FroniusCommon (HeadData, timestamp)
+import F2I.FroniusInverterData (InverterEntry (bodyIE, headIE), InverterStat (unit, values))
+import F2I.FroniusPowerflowData (PowerflowBody (inverters, site, version), PowerflowEntry)
+import F2I.FroniusPowerflowData qualified as PowerflowEntry
 import Streaming qualified as S
 import Streaming.Prelude qualified as SP
 import Prelude (
@@ -50,7 +50,7 @@ tagsFromHead :: HeadData -> [(String, String)]
 tagsFromHead _ = []
 
 timestampFromHead :: HeadData -> Maybe UTCTime
-timestampFromHead hD = fmap zonedTimeToUTC (parseTimeRFC3339 $ FroniusCommon.timestamp hD)
+timestampFromHead hD = fmap zonedTimeToUTC (parseTimeRFC3339 $ F2I.FroniusCommon.timestamp hD)
 
 maybeNumericValue :: (a, Value) -> Maybe (a, Int)
 maybeNumericValue (l, Number n) = case toBoundedInteger n of
@@ -86,7 +86,7 @@ generatePowerflowMetrics timestamp baseTags pfBody =
         { measurement = "powerflow",
           tags = baseTags ++ [("version", version pfBody)] ++ pFTags,
           field = field,
-          Common.timestamp = timestamp
+          F2I.Common.timestamp = timestamp
         }
       | (pFTags, field) <-
             powerflowSiteMetrics (site pfBody) ++ powerflowInverterMetrics (inverters pfBody)
@@ -108,7 +108,7 @@ generateInverterMetrics timestamp baseTags inverterBody =
         { measurement = "inverter",
           tags = baseTags ++ iTags,
           field = field,
-          Common.timestamp = timestamp
+          F2I.Common.timestamp = timestamp
         }
       | (iTags, field) <- inverterMetricsFromBody inverterBody
     ]
@@ -165,8 +165,8 @@ inverterFromBS path content = do
         Left msg -> ArchiveStatus {path = path, success = False, msg = msg, realFile = False, metrics = []}
         Right entry -> do
             let
-                headData = FroniusInverterData.headIE entry
-                bodyData = FroniusInverterData.bodyIE entry
+                headData = F2I.FroniusInverterData.headIE entry
+                bodyData = F2I.FroniusInverterData.bodyIE entry
                 headTags = tagsFromHead headData
                 timestamp = timestampFromHead headData
                 inverterMetrics = generateInverterMetrics timestamp headTags bodyData
