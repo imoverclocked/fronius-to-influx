@@ -1,23 +1,40 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE Safe #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wno-inferred-safe-imports #-}
 
-module Common (
+module F2I.Common (
     ArchiveStatus (..),
     ArchiveStatusStream,
     InfluxMetric (..),
+    InfluxMetricGenerator (..),
     ProcessEntry,
+    ProtoInfluxMetrics,
+    ProtoMetricGenerator (..),
 ) where
 
 import Data.ByteString qualified as BS
 import Data.Kind (Type)
 import Data.Time (UTCTime)
 import Streaming.Prelude qualified as SP
-import Prelude (Bool, Either, Eq, IO, Int, Maybe, Show, String)
+import Prelude (Bool, Either, Eq, IO, Int, Maybe, Show, String, (++))
+
+class InfluxMetricGenerator a where
+    measurementName :: a -> String
+    influxMetrics :: a -> [InfluxMetric]
+
+{- |
+[ [ (tag key, value) ], (measurement, value) ]
+-}
+type ProtoInfluxMetrics = [([(String, String)], (String, Either Int Bool))]
+
+-- | A useful mid-step before actual metric generation
+class ProtoMetricGenerator a where
+    protoMetrics :: a -> ProtoInfluxMetrics
 
 type InfluxMetric :: Type
 data InfluxMetric = InfluxMetric
@@ -43,3 +60,9 @@ type ProcessEntry = String -> BS.ByteString -> ArchiveStatus
 
 type ArchiveStatusStream :: Type
 type ArchiveStatusStream = SP.Stream (SP.Of ArchiveStatus) IO ()
+
+instance InfluxMetricGenerator ArchiveStatus where
+    measurementName :: ArchiveStatus -> String
+    measurementName _ = "ignored"
+    influxMetrics :: ArchiveStatus -> [InfluxMetric]
+    influxMetrics = metrics

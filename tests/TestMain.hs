@@ -3,13 +3,15 @@ module Main where
 import System.Exit (exitFailure, exitSuccess)
 import Test.HUnit (Counts (errors, failures), Test (TestList), runTestTT)
 import TestArchive (archiveDataTests)
+import TestFroniusAPIData (froniusAPIDataTests)
 import TestFroniusData (froniusDataTests)
 import TestInfluxData (influxDataTests)
 
 tests :: Test
 tests =
     TestList
-        [ froniusDataTests,
+        [ froniusAPIDataTests,
+          froniusDataTests,
           archiveDataTests,
           influxDataTests
         ]

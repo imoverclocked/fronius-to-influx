@@ -5,7 +5,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wno-unsafe #-}
 
-module Archive (
+module F2I.Archive (
     processArchive,
 ) where
 
@@ -14,15 +14,15 @@ import Codec.Archive (Entry (content, filepath), EntryContent (NormalFile))
 import Codec.Compression.GZip qualified as GZip
 import Codec.Compression.Lzma qualified as Lzma
 import Codec.Compression.Zlib qualified as Zlib
-import Common (
-    ArchiveStatus (ArchiveStatus, metrics, msg, path, realFile, success),
-    ArchiveStatusStream,
-    ProcessEntry,
- )
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
 import Data.Kind (Type)
 import Data.List (isSuffixOf, (++))
+import F2I.Common (
+    ArchiveStatus (ArchiveStatus, metrics, msg, path, realFile, success),
+    ArchiveStatusStream,
+    ProcessEntry,
+ )
 import Streaming qualified as S
 import Streaming.Prelude qualified as SP
 import Prelude (

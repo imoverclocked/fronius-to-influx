@@ -3,10 +3,10 @@
 
 module TestArchive (archiveDataTests) where
 
-import Archive (processArchive)
-import Common (ArchiveStatus (..), ProcessEntry)
 import Control.Monad (when)
 import Data.List (isSuffixOf)
+import F2I.Archive (processArchive)
+import F2I.Common (ArchiveStatus (..), ProcessEntry)
 import Streaming.Prelude qualified as SP
 import Test.HUnit (Test (..), assertEqual)
 

@@ -11,16 +11,16 @@
 
 module Main (main) where
 
-import Archive (processArchive)
-import Common (ArchiveStatus (ArchiveStatus, metrics, msg, path, realFile, success), ArchiveStatusStream, ProcessEntry)
 import Control.Monad (unless, when)
 import Data.IORef (IORef, atomicModifyIORef, newIORef, readIORef)
 import Data.Kind (Type)
 import Data.List (isInfixOf, isSuffixOf)
+import F2I.Archive (processArchive)
+import F2I.Common (ArchiveStatus (ArchiveStatus, metrics, msg, path, realFile, success), ArchiveStatusStream, ProcessEntry)
+import F2I.InfluxConnection (sendStats)
+import F2I.InfluxData (inverter, inverterFromBS, powerFlow, powerFlowFromBS)
 import GHC.IO.Handle (hPutStr)
 import GHC.IO.StdHandles (stderr)
-import InfluxConnection (sendStats)
-import InfluxData (inverter, inverterFromBS, powerFlow, powerFlowFromBS)
 import Streaming qualified as S
 import Streaming.Prelude qualified as SP
 import System.Console.CmdArgs (Data, Default (def), args, cmdArgs, details, help, summary, typ, (&=))

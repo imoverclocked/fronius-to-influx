@@ -2,11 +2,11 @@
 
 module TestInfluxData (influxDataTests) where
 
-import Common (ArchiveStatus (..), InfluxMetric (..))
 import Control.Exception (try)
 import Data.Time (zonedTimeToUTC)
 import Data.Time.RFC3339 (parseTimeRFC3339)
-import InfluxData (inverter, inverterFromBS, powerFlow, powerFlowFromBS)
+import F2I.Common (ArchiveStatus (..), InfluxMetric (..))
+import F2I.InfluxData (inverter, inverterFromBS, powerFlow, powerFlowFromBS)
 import Streaming.Prelude qualified as SP
 import Test.HUnit (Test (..), assertBool, assertEqual, assertFailure)
 

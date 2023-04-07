@@ -152,5 +152,5 @@ Similar is done for powerflow data.
 ### Code formatting ###
 
 ```
-fourmolu --mode inplace app
+fourmolu --mode inplace cli daemon lib tests
 ```
