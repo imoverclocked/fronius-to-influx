@@ -9,16 +9,20 @@
 
 module F2I.FroniusPowerflowData (
     PowerflowBody (..),
-    PowerflowEntry (..),
+    PowerflowEntry (PowerflowEntry),
+    powerflowSiteMetrics,
+    powerflowInverterMetrics,
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), object, withObject, (.:), (.=))
 import Data.Aeson.Types (Parser, Value)
 import Data.Kind (Type)
-import Data.Map (Map)
-import F2I.FroniusCommon (HeadData)
+import Data.Map (Map, toList)
+import Data.Maybe (mapMaybe)
+import F2I.Common (InfluxMetric (..), InfluxMetricGenerator (..), ProtoInfluxMetrics, ProtoMetricGenerator (protoMetrics))
+import F2I.FroniusCommon (FroniusHeadData (baseTags, headData, headTimestamp, tagsFromHead), HeadData, defaultInfluxMetrics, maybeNumericValue, maybeStringValue)
 import GHC.Generics (Generic)
-import Prelude (Int, Monad (return), Show, String, ($))
+import Prelude (Either (Left), Int, Monad (return), Show, String, ($), (++))
 
 -- powerflow entry example
 {-
@@ -100,3 +104,42 @@ instance FromJSON PowerflowEntry where
 instance ToJSON PowerflowEntry where
     toJSON :: PowerflowEntry -> Value
     toJSON (PowerflowEntry body headData) = object ["Body" .= body, "Head" .= headData]
+
+instance FroniusHeadData PowerflowEntry where
+    headData :: PowerflowEntry -> HeadData
+    headData = headPF
+
+    baseTags :: PowerflowEntry -> [(String, String)]
+    baseTags entry = ("version", version $ bodyPF entry) : tagsFromHead entry
+
+powerflowSiteMetrics :: Map String Value -> ProtoInfluxMetrics
+powerflowSiteMetrics siteMap = do
+    let
+        siteTags =
+            mapMaybe maybeStringValue $
+                toList siteMap
+                    ++ [("id", "site")]
+        siteFields = mapMaybe maybeNumericValue $ toList siteMap
+
+    [(siteTags, (k, Left v)) | (k, v) <- siteFields]
+
+powerflowInverterMetrics :: Map String (Map String Int) -> ProtoInfluxMetrics
+powerflowInverterMetrics inverters =
+    [ ([("id", inverterId)], (k, Left v))
+      | (inverterId, kv) <- toList inverters,
+        (k, v) <- toList kv
+    ]
+
+instance ProtoMetricGenerator PowerflowEntry where
+    protoMetrics :: PowerflowEntry -> ProtoInfluxMetrics
+    protoMetrics entry = do
+        let
+            bodyData = bodyPF entry
+        powerflowSiteMetrics (site bodyData) ++ powerflowInverterMetrics (inverters bodyData)
+
+instance InfluxMetricGenerator PowerflowEntry where
+    measurementName :: PowerflowEntry -> String
+    measurementName _ = "powerflow"
+
+    influxMetrics :: PowerflowEntry -> [InfluxMetric]
+    influxMetrics = defaultInfluxMetrics

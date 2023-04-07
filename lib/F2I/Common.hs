@@ -10,14 +10,30 @@ module F2I.Common (
     ArchiveStatus (..),
     ArchiveStatusStream,
     InfluxMetric (..),
+    InfluxMetricGenerator (..),
     ProcessEntry,
+    ProtoInfluxMetrics,
+    ProtoMetricGenerator (..),
 ) where
 
 import Data.ByteString qualified as BS
 import Data.Kind (Type)
 import Data.Time (UTCTime)
 import Streaming.Prelude qualified as SP
-import Prelude (Bool, Either, Eq, IO, Int, Maybe, Show, String)
+import Prelude (Bool, Either, Eq, IO, Int, Maybe, Show, String, (++))
+
+class InfluxMetricGenerator a where
+    measurementName :: a -> String
+    influxMetrics :: a -> [InfluxMetric]
+
+{- |
+[ [ (tag key, value) ], (measurement, value) ]
+-}
+type ProtoInfluxMetrics = [([(String, String)], (String, Either Int Bool))]
+
+-- | A useful mid-step before actual metric generation
+class ProtoMetricGenerator a where
+    protoMetrics :: a -> ProtoInfluxMetrics
 
 type InfluxMetric :: Type
 data InfluxMetric = InfluxMetric

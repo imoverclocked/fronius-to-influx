@@ -12,24 +12,17 @@ module F2I.InfluxData (
     inverterFromBS,
 ) where
 
-import Data.Aeson (Value (Number, String), decode, eitherDecode)
+import Data.Aeson (eitherDecode)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
-import Data.Map (Map, toList)
-import Data.Maybe (Maybe (Just, Nothing), mapMaybe, maybe)
-import Data.Scientific (toBoundedInteger)
-import Data.Text (unpack)
-import Data.Time (UTCTime, zonedTimeToUTC)
-import Data.Time.RFC3339 (parseTimeRFC3339)
 import F2I.Common (
     ArchiveStatus (ArchiveStatus, metrics, msg, path, realFile, success),
     ArchiveStatusStream,
     InfluxMetric (InfluxMetric, field, measurement, tags, timestamp),
+    InfluxMetricGenerator (influxMetrics, measurementName),
  )
-import F2I.FroniusCommon (HeadData, timestamp)
-import F2I.FroniusInverterData (InverterEntry (bodyIE, headIE), InverterStat (unit, values))
-import F2I.FroniusPowerflowData (PowerflowBody (inverters, site, version), PowerflowEntry)
-import F2I.FroniusPowerflowData qualified as PowerflowEntry
+import F2I.FroniusInverterData (InverterEntry)
+import F2I.FroniusPowerflowData (PowerflowEntry)
 import Streaming qualified as S
 import Streaming.Prelude qualified as SP
 import Prelude (
@@ -42,76 +35,9 @@ import Prelude (
     String,
     ($),
     (++),
+    (.),
     (=<<),
  )
-
--- most head data is not useful in stats collection, populate this later if we find a need
-tagsFromHead :: HeadData -> [(String, String)]
-tagsFromHead _ = []
-
-timestampFromHead :: HeadData -> Maybe UTCTime
-timestampFromHead hD = fmap zonedTimeToUTC (parseTimeRFC3339 $ F2I.FroniusCommon.timestamp hD)
-
-maybeNumericValue :: (a, Value) -> Maybe (a, Int)
-maybeNumericValue (l, Number n) = case toBoundedInteger n of
-    (Just nInt) -> Just (l, nInt)
-    _ -> Nothing
-maybeNumericValue _ = Nothing
-
-maybeStringValue :: (a, Value) -> Maybe (a, String)
-maybeStringValue (l, String str) = Just (l, unpack str)
-maybeStringValue _ = Nothing
-
-powerflowSiteMetrics :: Map String Value -> [([(String, String)], (String, Either Int Bool))]
-powerflowSiteMetrics siteMap = do
-    let
-        siteTags =
-            mapMaybe maybeStringValue $
-                toList siteMap
-                    ++ [("id", "site")]
-        siteFields = mapMaybe maybeNumericValue $ toList siteMap
-
-    [(siteTags, (k, Left v)) | (k, v) <- siteFields]
-
-powerflowInverterMetrics :: Map String (Map String Int) -> [([(String, String)], (String, Either Int Bool))]
-powerflowInverterMetrics inverters =
-    [ ([("id", inverterId)], (k, Left v))
-      | (inverterId, kv) <- toList inverters,
-        (k, v) <- toList kv
-    ]
-
-generatePowerflowMetrics :: Maybe UTCTime -> [(String, String)] -> PowerflowBody -> [InfluxMetric]
-generatePowerflowMetrics timestamp baseTags pfBody =
-    [ InfluxMetric
-        { measurement = "powerflow",
-          tags = baseTags ++ [("version", version pfBody)] ++ pFTags,
-          field = field,
-          F2I.Common.timestamp = timestamp
-        }
-      | (pFTags, field) <-
-            powerflowSiteMetrics (site pfBody) ++ powerflowInverterMetrics (inverters pfBody)
-    ]
-
--- TODO: cleanup types: produces a list of ( list of tags, inverter stat )
-inverterMetricsFromBody :: Map String InverterStat -> [([(String, String)], (String, Either Int Bool))]
-inverterMetricsFromBody inverterStats =
-    [ ( [("id", i), ("unit", unit inverterStat)],
-        (key, Left v1)
-      )
-      | (key, inverterStat) <- toList inverterStats,
-        (i, v1) <- toList $ values inverterStat
-    ]
-
-generateInverterMetrics :: Maybe UTCTime -> [(String, String)] -> Map String InverterStat -> [InfluxMetric]
-generateInverterMetrics timestamp baseTags inverterBody =
-    [ InfluxMetric
-        { measurement = "inverter",
-          tags = baseTags ++ iTags,
-          field = field,
-          F2I.Common.timestamp = timestamp
-        }
-      | (iTags, field) <- inverterMetricsFromBody inverterBody
-    ]
 
 -- Convert files/file contents to ArchiveStatus{...}
 
@@ -126,26 +52,10 @@ _powerFlow path = do
     pure $ SP.yield archiveStatus {realFile = True}
 
 powerFlowFromBS :: String -> BS.ByteString -> ArchiveStatus
-powerFlowFromBS path content = do
-    let
-        entryDecode = eitherDecode $ BSL.fromStrict content :: Either String PowerflowEntry
-    case entryDecode of
-        Left msg -> ArchiveStatus {path = path, success = False, msg = msg, realFile = False, metrics = []}
-        Right entry -> do
-            let
-                headData = PowerflowEntry.headPF entry
-                bodyData = PowerflowEntry.bodyPF entry
-                headTags = tagsFromHead headData
-                timestamp = timestampFromHead headData
-                metrics = generatePowerflowMetrics timestamp headTags bodyData
-
-            ArchiveStatus
-                { path = path,
-                  realFile = False,
-                  success = True,
-                  msg = "",
-                  metrics = metrics
-                }
+powerFlowFromBS path content =
+    _archiveStatusFromMetricGenerator
+        path
+        (eitherDecode $ BSL.fromStrict content :: Either String PowerflowEntry)
 
 inverter :: String -> ArchiveStatusStream
 inverter path = S.effect $ _inverter path
@@ -158,23 +68,14 @@ _inverter path = do
     pure $ SP.yield archiveStatus {realFile = True}
 
 inverterFromBS :: String -> BS.ByteString -> ArchiveStatus
-inverterFromBS path content = do
-    let
-        entryDecode = eitherDecode $ BSL.fromStrict content :: Either String InverterEntry
-    case entryDecode of
-        Left msg -> ArchiveStatus {path = path, success = False, msg = msg, realFile = False, metrics = []}
-        Right entry -> do
-            let
-                headData = F2I.FroniusInverterData.headIE entry
-                bodyData = F2I.FroniusInverterData.bodyIE entry
-                headTags = tagsFromHead headData
-                timestamp = timestampFromHead headData
-                inverterMetrics = generateInverterMetrics timestamp headTags bodyData
+inverterFromBS path content =
+    _archiveStatusFromMetricGenerator
+        path
+        (eitherDecode $ BSL.fromStrict content :: Either String InverterEntry)
 
-            ArchiveStatus
-                { path = path,
-                  realFile = False,
-                  success = True,
-                  msg = "",
-                  metrics = inverterMetrics
-                }
+-- Left is an error message, Right is an InfluxMetricGenerator
+_archiveStatusFromMetricGenerator :: (InfluxMetricGenerator a) => String -> Either String a -> ArchiveStatus
+_archiveStatusFromMetricGenerator path (Left msg) =
+    ArchiveStatus {path = path, success = False, msg = msg, realFile = False, metrics = []}
+_archiveStatusFromMetricGenerator path (Right gen) =
+    ArchiveStatus {path = path, success = True, msg = "", realFile = False, metrics = influxMetrics gen}

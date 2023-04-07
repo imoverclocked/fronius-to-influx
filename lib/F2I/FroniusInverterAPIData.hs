@@ -27,10 +27,12 @@ module F2I.FroniusInverterAPIData (
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), object, withObject, (.:), (.=))
 import Data.Aeson.Types (Parser, Value)
 import Data.Kind (Type)
-import Data.Map (Map)
-import F2I.FroniusCommon (HeadData)
+import Data.Map (Map, toList)
+import Data.Maybe (mapMaybe)
+import F2I.Common (InfluxMetric (..), InfluxMetricGenerator (..), ProtoInfluxMetrics, ProtoMetricGenerator (protoMetrics))
+import F2I.FroniusCommon (FroniusHeadData (..), HeadData, defaultInfluxMetrics, maybeNumericValue)
 import GHC.Generics (Generic)
-import Prelude (Int, Monad (return), Show, String, ($))
+import Prelude (Either (Left), Int, Monad (return), Show, String, ($), (++), (.))
 
 apiPath :: String
 apiPath = "/solar_api/v1/GetInverterInfo.cgi"
@@ -101,3 +103,29 @@ instance FromJSON InverterAPIEntry where
 instance ToJSON InverterAPIEntry where
     toJSON :: InverterAPIEntry -> Value
     toJSON (InverterAPIEntry bodyIAE headIAE) = object ["Body" .= bodyIAE, "Head" .= headIAE]
+
+instance FroniusHeadData InverterAPIEntry where
+    headData :: InverterAPIEntry -> HeadData
+    headData = headIAE
+
+    baseTags :: InverterAPIEntry -> [(String, String)]
+    baseTags = tagsFromHead
+
+instance ProtoMetricGenerator InverterAPIEntry where
+    protoMetrics :: InverterAPIEntry -> ProtoInfluxMetrics
+    protoMetrics entry = do
+        let
+            bodyData = daytah . bodyIAE $ entry :: Map String (Map String Value)
+        [ ( [("id", i)],
+            (key, Left v1)
+          )
+          | (i, inverterStat) <- toList bodyData,
+            (key, v1) <- mapMaybe maybeNumericValue $ toList inverterStat
+            ]
+
+instance InfluxMetricGenerator InverterAPIEntry where
+    measurementName :: InverterAPIEntry -> String
+    measurementName _ = "inverter"
+
+    influxMetrics :: InverterAPIEntry -> [InfluxMetric]
+    influxMetrics = defaultInfluxMetrics

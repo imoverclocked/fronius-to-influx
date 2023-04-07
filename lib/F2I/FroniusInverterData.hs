@@ -15,10 +15,11 @@ module F2I.FroniusInverterData (
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), object, withObject, (.:), (.=))
 import Data.Aeson.Types (Parser, Value)
 import Data.Kind (Type)
-import Data.Map (Map)
-import F2I.FroniusCommon (HeadData)
+import Data.Map (Map, toList)
+import F2I.Common (InfluxMetric (..), InfluxMetricGenerator (..), ProtoInfluxMetrics, ProtoMetricGenerator (protoMetrics))
+import F2I.FroniusCommon (FroniusHeadData (baseTags, headData, headTimestamp, tagsFromHead), HeadData, defaultInfluxMetrics)
 import GHC.Generics (Generic)
-import Prelude (Int, Monad (return), Show, String, ($))
+import Prelude (Either (Left), Int, Monad (return), Show, String, ($), (++))
 
 -- Inverter Entry example
 {-
@@ -97,3 +98,26 @@ instance FromJSON InverterEntry where
 instance ToJSON InverterEntry where
     toJSON :: InverterEntry -> Value
     toJSON (InverterEntry bodyIE headIE) = object ["Body" .= bodyIE, "Head" .= headIE]
+
+instance FroniusHeadData InverterEntry where
+    headData :: InverterEntry -> HeadData
+    headData = headIE
+
+instance ProtoMetricGenerator InverterEntry where
+    protoMetrics :: InverterEntry -> ProtoInfluxMetrics
+    protoMetrics entry = do
+        let
+            bodyData = bodyIE entry
+        [ ( [("id", i), ("unit", unit inverterStat)],
+            (key, Left v1)
+          )
+          | (key, inverterStat) <- toList bodyData,
+            (i, v1) <- toList $ values inverterStat
+            ]
+
+instance InfluxMetricGenerator InverterEntry where
+    measurementName :: InverterEntry -> String
+    measurementName _ = "inverter"
+
+    influxMetrics :: InverterEntry -> [InfluxMetric]
+    influxMetrics = defaultInfluxMetrics

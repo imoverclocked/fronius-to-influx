@@ -22,16 +22,18 @@ module F2I.FroniusPowerflowAPIData (
     apiPath,
     PowerflowAPIBodyData (..),
     PowerflowAPIEntry (..),
+    PowerflowAPIEntryBody (..),
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), object, withObject, (.:), (.=))
 import Data.Aeson.Types (Parser, Value)
 import Data.Kind (Type)
 import Data.Map (Map)
-import F2I.FroniusCommon (HeadData)
-import F2I.FroniusPowerflowData (PowerflowBody)
+import F2I.Common (InfluxMetric (InfluxMetric, field, measurement, tags), InfluxMetricGenerator (influxMetrics, measurementName), ProtoInfluxMetrics, ProtoMetricGenerator (protoMetrics), timestamp)
+import F2I.FroniusCommon (FroniusHeadData (baseTags, headData, headTimestamp, tagsFromHead), HeadData, defaultInfluxMetrics)
+import F2I.FroniusPowerflowData (PowerflowBody (inverters, site), powerflowInverterMetrics, powerflowSiteMetrics, version)
 import GHC.Generics (Generic)
-import Prelude (Int, Monad (return), Show, String, ($))
+import Prelude (Int, Monad (return), Show, String, ($), (++), (.))
 
 apiPath :: String
 apiPath = "/solar_api/v1/GetPowerFlowRealtimeData.fcgi"
@@ -119,3 +121,24 @@ instance FromJSON PowerflowAPIEntry where
 instance ToJSON PowerflowAPIEntry where
     toJSON :: PowerflowAPIEntry -> Value
     toJSON (PowerflowAPIEntry bodyPFA headPFA) = object ["Body" .= bodyPFA, "Head" .= headPFA]
+
+instance FroniusHeadData PowerflowAPIEntry where
+    headData :: PowerflowAPIEntry -> HeadData
+    headData = headPFA
+
+    baseTags :: PowerflowAPIEntry -> [(String, String)]
+    baseTags entry = ("version", version . dayta . bodyPFA $ entry) : tagsFromHead entry
+
+instance ProtoMetricGenerator PowerflowAPIEntry where
+    protoMetrics :: PowerflowAPIEntry -> ProtoInfluxMetrics
+    protoMetrics entry = do
+        let
+            bodyData = dayta . bodyPFA $ entry
+        powerflowSiteMetrics (site bodyData) ++ powerflowInverterMetrics (inverters bodyData)
+
+instance InfluxMetricGenerator PowerflowAPIEntry where
+    measurementName :: PowerflowAPIEntry -> String
+    measurementName _ = "powerflow"
+
+    influxMetrics :: PowerflowAPIEntry -> [InfluxMetric]
+    influxMetrics = defaultInfluxMetrics
