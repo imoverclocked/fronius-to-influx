@@ -5,10 +5,25 @@
 
 module Main (main) where
 
+import Control.Concurrent (threadDelay)
+import Control.Monad (forever)
+import Data.Aeson (FromJSON)
 import Data.Data (Data)
 import Data.Kind (Type)
+import F2I.FroniusInverterAPIData (InverterAPIEntry)
+import F2I.FroniusInverterAPIData qualified as InverterAPI
+import F2I.FroniusPowerflowAPIData (PowerflowAPIEntry)
+import F2I.FroniusPowerflowAPIData qualified as PowerflowAPI
+import Network.HTTP.Client (Response, parseRequest)
+import Network.HTTP.Simple (JSONException, getResponseBody, httpJSONEither)
 import System.Console.CmdArgs (cmdArgs, details, help, summary, (&=))
-import Prelude (IO, Int, Show, String, print)
+import Prelude (Either, IO, Int, Monad (return), Num ((*)), Show, String, print, ($), (++))
+
+powerFlowURIPath :: String -> String
+powerFlowURIPath base = base ++ PowerflowAPI.apiPath
+
+inverterURIPath :: String -> String
+inverterURIPath base = base ++ InverterAPI.apiPath
 
 type FroniusToInfluxD :: Type
 data FroniusToInfluxD = FroniusToInfluxD
@@ -37,10 +52,24 @@ defaultArgs =
               "influxdb for easier digestion of the data (eg: grafana)"
             ]
 
+doRequest :: forall a. (FromJSON a) => String -> IO (Either JSONException a)
+doRequest apiPath = do
+    request <- parseRequest apiPath
+    response <- httpJSONEither request :: IO (Response (Either JSONException a))
+    return $ getResponseBody response
+
 main :: IO ()
 main = do
-    -- arg processing
     realArgs <- cmdArgs defaultArgs
-
-    print realArgs
     print "TODO: write a daemon to poll a datamanager 2.0 and send metrics directly to influxdb"
+
+    forever $ do
+        inverterEither :: Either JSONException InverterAPIEntry <- doRequest $ inverterURIPath $ datamangerURI realArgs
+        print inverterEither
+
+        threadDelay (5 * 1000000)
+
+        powerflowEither :: Either JSONException PowerflowAPIEntry <- doRequest $ powerFlowURIPath $ datamangerURI realArgs
+        print powerflowEither
+
+        threadDelay (5 * 1000000)

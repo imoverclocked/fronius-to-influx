@@ -66,7 +66,9 @@ library
                       F2I.InfluxData,
                       F2I.FroniusData,
                       F2I.FroniusCommon,
+                      F2I.FroniusInverterAPIData,
                       F2I.FroniusInverterData,
+                      F2I.FroniusPowerflowAPIData,
                       F2I.FroniusPowerflowData
     hs-source-dirs:   lib
 
@@ -115,9 +117,12 @@ executable fronius-to-influxd
     import:           warnings
     main-is:          Main.hs
     build-depends:
+                      aeson,
                       base >=4.14.3.0,
                       cmdargs,
                       fronius-to-influx,
+                      http-client,
+                      http-conduit,
     hs-source-dirs:   daemon
     default-language: GHC2021
 
@@ -128,6 +133,7 @@ test-suite fronius-to-influx-tests
     hs-source-dirs:   tests
     other-modules:
                       TestArchive,
+                      TestFroniusAPIData,
                       TestFroniusData,
                       TestInfluxData,
     build-depends:
