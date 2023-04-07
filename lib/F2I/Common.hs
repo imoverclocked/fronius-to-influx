@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE Safe #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -59,3 +60,9 @@ type ProcessEntry = String -> BS.ByteString -> ArchiveStatus
 
 type ArchiveStatusStream :: Type
 type ArchiveStatusStream = SP.Stream (SP.Of ArchiveStatus) IO ()
+
+instance InfluxMetricGenerator ArchiveStatus where
+    measurementName :: ArchiveStatus -> String
+    measurementName _ = "ignored"
+    influxMetrics :: ArchiveStatus -> [InfluxMetric]
+    influxMetrics = metrics

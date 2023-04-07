@@ -1,4 +1,6 @@
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE Unsafe #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wno-unsafe #-}
@@ -6,18 +8,23 @@
 module Main (main) where
 
 import Control.Concurrent (threadDelay)
+import Control.Exception (Exception (displayException))
 import Control.Monad (forever)
 import Data.Aeson (FromJSON)
 import Data.Data (Data)
 import Data.Kind (Type)
+import F2I.Common (InfluxMetricGenerator)
 import F2I.FroniusInverterAPIData (InverterAPIEntry)
 import F2I.FroniusInverterAPIData qualified as InverterAPI
 import F2I.FroniusPowerflowAPIData (PowerflowAPIEntry)
 import F2I.FroniusPowerflowAPIData qualified as PowerflowAPI
+import F2I.InfluxConnection (sendStats)
+import GHC.IO.Handle (hPutStr)
+import GHC.IO.StdHandles (stderr)
 import Network.HTTP.Client (Response, parseRequest)
 import Network.HTTP.Simple (JSONException, getResponseBody, httpJSONEither)
 import System.Console.CmdArgs (cmdArgs, details, help, summary, (&=))
-import Prelude (Either, IO, Int, Monad (return), Num ((*)), Show, String, print, ($), (++))
+import Prelude (Either (Left, Right), IO, Int, Maybe (Just), Monad (return), Num ((*), (-)), Show, String, ($), (++))
 
 powerFlowURIPath :: String -> String
 powerFlowURIPath base = base ++ PowerflowAPI.apiPath
@@ -52,24 +59,28 @@ defaultArgs =
               "influxdb for easier digestion of the data (eg: grafana)"
             ]
 
-doRequest :: forall a. (FromJSON a) => String -> IO (Either JSONException a)
+doRequest :: (FromJSON a) => String -> IO (Either JSONException a)
 doRequest apiPath = do
     request <- parseRequest apiPath
-    response <- httpJSONEither request :: IO (Response (Either JSONException a))
+    response :: Response (Either JSONException a) <- httpJSONEither request
     return $ getResponseBody response
+
+printError :: JSONException -> IO ()
+printError e = hPutStr stderr $ displayException e
+
+handleMetric :: (InfluxMetricGenerator a) => FroniusToInfluxD -> Either JSONException a -> IO ()
+handleMetric _ (Left exception) = printError exception
+handleMetric realArgs (Right res) = sendStats (influx_protocol realArgs) (host realArgs) (port realArgs) $ Just res
 
 main :: IO ()
 main = do
     realArgs <- cmdArgs defaultArgs
-    print "TODO: write a daemon to poll a datamanager 2.0 and send metrics directly to influxdb"
-
     forever $ do
-        inverterEither :: Either JSONException InverterAPIEntry <- doRequest $ inverterURIPath $ datamangerURI realArgs
-        print inverterEither
+        m1 :: Either JSONException PowerflowAPIEntry <- doRequest $ powerFlowURIPath $ datamangerURI realArgs
+        _ <- handleMetric realArgs m1
 
-        threadDelay (5 * 1000000)
+        threadDelay 100000 -- be nice to the API
+        m2 :: Either JSONException InverterAPIEntry <- doRequest $ inverterURIPath $ datamangerURI realArgs
+        _ <- handleMetric realArgs m2
 
-        powerflowEither :: Either JSONException PowerflowAPIEntry <- doRequest $ powerFlowURIPath $ datamangerURI realArgs
-        print powerflowEither
-
-        threadDelay (5 * 1000000)
+        threadDelay (poll_interval realArgs * 1000000 - 100000)

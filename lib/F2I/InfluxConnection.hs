@@ -20,7 +20,7 @@ import Database.InfluxDB (Field (FieldBool, FieldInt), HasServer (server), Line 
 import Database.InfluxDB.Types (Key, LineField, Measurement, Server (Server, _host, _port, _ssl))
 import Database.InfluxDB.Write qualified as HTTP
 import Database.InfluxDB.Write.UDP qualified as UDP
-import F2I.Common (ArchiveStatus (metrics, success), InfluxMetric (field, measurement, tags, timestamp))
+import F2I.Common (ArchiveStatus (metrics, success), InfluxMetric (field, measurement, tags, timestamp), InfluxMetricGenerator (influxMetrics))
 import Network.Run.UDP (runUDPClient)
 import Network.Socket (SockAddr, Socket)
 import System.Exit (die)
@@ -49,26 +49,26 @@ _archiveStatusToMetric aS =
         then Just aS
         else Nothing
 
-_writeUDPMetrics :: (Foldable f) => f ArchiveStatus -> UDP.WriteParams -> IO ()
+_writeUDPMetrics :: (Foldable f, InfluxMetricGenerator a) => f a -> UDP.WriteParams -> IO ()
 _writeUDPMetrics archiveStatusF params =
     {-
         Can't do this because https://github.com/maoe/influxdb-haskell/issues/92
         UDP.writeBatch params metricList
     -}
     -- write the metrics (potentially into the UDP void)
-    foldMap (_writeUDPMetricsF params . metrics) archiveStatusF
+    foldMap (_writeUDPMetricsF params . influxMetrics) archiveStatusF
 
 _writeUDPMetricsF :: (Foldable f) => UDP.WriteParams -> f InfluxMetric -> IO ()
 _writeUDPMetricsF params = foldMap (UDP.write params . _lineFromMetric)
 
-doUDPClient :: (Foldable f) => f ArchiveStatus -> Socket -> SockAddr -> IO ()
+doUDPClient :: (Foldable f, InfluxMetricGenerator a) => f a -> Socket -> SockAddr -> IO ()
 doUDPClient archiveStatusList sock sockAddr = do
     let
         params = UDP.writeParams sock sockAddr
     _writeUDPMetrics archiveStatusList params
 
-_accumulateMetrics :: ArchiveStatus -> [InfluxMetric] -> [InfluxMetric]
-_accumulateMetrics archiveStatus extractedMetrics = extractedMetrics ++ metrics archiveStatus
+_accumulateMetrics :: (InfluxMetricGenerator a) => a -> [InfluxMetric] -> [InfluxMetric]
+_accumulateMetrics archiveStatus extractedMetrics = extractedMetrics ++ influxMetrics archiveStatus
 
 _lineFromMetric :: InfluxMetric -> Line UTCTime
 _lineFromMetric metric = do
@@ -87,13 +87,13 @@ _lineFromMetric metric = do
 
     Line m t f ts
 
-writeHTTPMetrics :: (Foldable f) => f ArchiveStatus -> HTTP.WriteParams -> IO ()
+writeHTTPMetrics :: (Foldable f, InfluxMetricGenerator a) => f a -> HTTP.WriteParams -> IO ()
 writeHTTPMetrics archiveStatusF params =
     HTTP.writeBatch params $
         map _lineFromMetric $
             foldr _accumulateMetrics [] archiveStatusF
 
-doHTTPClient :: (Foldable f) => String -> Int -> Bool -> f ArchiveStatus -> IO ()
+doHTTPClient :: (Foldable f, InfluxMetricGenerator a) => String -> Int -> Bool -> f a -> IO ()
 doHTTPClient host port ssl metricResultPairs = do
     let
         params =
@@ -111,7 +111,7 @@ doHTTPClient host port ssl metricResultPairs = do
   Takes a list of (InfluxMetric, n) and sends them to a host:port
   returns a list of [n] that was sent (maybe unsuccessfully)
 -}
-sendStats :: (Foldable f) => String -> String -> Int -> f ArchiveStatus -> IO ()
+sendStats :: (Foldable f, InfluxMetricGenerator a) => String -> String -> Int -> f a -> IO ()
 sendStats "udp" host port s = getUDPConnection host port (doUDPClient s)
 sendStats "http" host port s = doHTTPClient host port False s
 sendStats "https" host port s = doHTTPClient host port True s
