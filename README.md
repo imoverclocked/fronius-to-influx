@@ -2,7 +2,11 @@
 
 Take data published from a Fronius Datamanager 2.0 and publish it to InfluxDB.
 
-It currently understands the inverter and powerflow json output that can be automatically pushed onto an ftp server. Since data can get large over time when uncompressed, this supports iterating through compressed tar archives with the same file content.
+The CLI tool currently understands the inverter and powerflow json output that can be automatically pushed onto an ftp server. Since data can get large over time when uncompressed, this supports iterating through compressed tar archives with the same file content.
+
+The daemon polls the datamanager url and submits the translated stats to a live influxdb.
+
+Both of these tools can compliment each other or be used completely independently.
 
 ## Usage ##
 
@@ -29,6 +33,33 @@ detects. In practice this brings storage of stats down from 70MB/day down to a
 few hundred kB.
 
 The tool expects data files to be named as *.powerflow and *.inverter
+```
+
+```
+fronius-to-influxd (C) Tim Spriggs
+
+froniustoinfluxd [OPTIONS]
+  Poll data from a Fronius Data Logger and send it to influxdb
+
+Common flags:
+  -i --influx-protocol=ITEM  connect via http, https or udp (default)
+  -h --host=ITEM             default: 127.0.0.1
+     --port=INT              default: 8086
+     --poll-interval=INT     seconds between polls
+  -d --datamangeruri=ITEM    the base datamanager URI
+  -? --help                  Display help message
+  -V --version               Print version information
+
+fronius-to-influxd takes data from a live datamanager card and converts it to
+influxdb for easier digestion of the data (eg: grafana)
+```
+
+eg:
+```
+% ~/.cabal/bin/fronius-to-influxd \
+    --influx-protocol http \
+    --host influxdb.example.com \
+    --datamanageruri=http://myinverter.example.com
 ```
 
 ## Examples ##

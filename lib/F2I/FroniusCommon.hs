@@ -86,9 +86,9 @@ defaultInfluxMetrics :: (InfluxMetricGenerator a, ProtoMetricGenerator a, Froniu
 defaultInfluxMetrics entry =
     [ InfluxMetric
         { measurement = measurementName entry,
-          tags = baseTags entry ++ pFTags,
+          tags = baseTags entry ++ pTags,
           field = field,
           F2IC.timestamp = headTimestamp entry
         }
-      | (pFTags, field) <- protoMetrics entry
+      | (pTags, field) <- protoMetrics entry
     ]

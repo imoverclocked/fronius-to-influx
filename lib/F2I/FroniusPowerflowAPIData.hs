@@ -8,7 +8,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# OPTIONS_GHC -Wno-unsafe #-}
 
-{-# HLINT ignore "Use newtype instead of data" #-}
+-- {-# HLINT ignore "Use newtype instead of data" #-}
 
 {- |
 Module      : F2I.FroniusPowerflowAPIData
@@ -20,23 +20,23 @@ will publish via ftp.
 -}
 module F2I.FroniusPowerflowAPIData (
     apiPath,
-    PowerflowAPIBodyData (..),
-    PowerflowAPIEntry (..),
-    PowerflowAPIEntryBody (..),
+    PowerflowAPIBodyData,
+    PowerflowAPIEntry (PowerflowAPIEntry),
+    PowerflowAPIEntryBody (PowerflowAPIEntryBody),
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), object, withObject, (.:), (.=))
 import Data.Aeson.Types (Parser, Value)
 import Data.Kind (Type)
 import Data.Map (Map)
-import F2I.Common (InfluxMetric (InfluxMetric, field, measurement, tags), InfluxMetricGenerator (influxMetrics, measurementName), ProtoInfluxMetrics, ProtoMetricGenerator (protoMetrics), timestamp)
+import F2I.Common (InfluxMetric, InfluxMetricGenerator (influxMetrics, measurementName), ProtoInfluxMetrics, ProtoMetricGenerator (protoMetrics), timestamp)
 import F2I.FroniusCommon (FroniusHeadData (baseTags, headData, headTimestamp, tagsFromHead), HeadData, defaultInfluxMetrics)
-import F2I.FroniusPowerflowData (PowerflowBody (inverters, site), powerflowInverterMetrics, powerflowSiteMetrics, version)
+import F2I.FroniusPowerflowData (PowerflowBody (..), powerflowInverterMetrics, powerflowSiteMetrics)
 import GHC.Generics (Generic)
 import Prelude (Int, Monad (return), Show, String, ($), (++), (.))
 
-apiPath :: String
-apiPath = "/solar_api/v1/GetPowerFlowRealtimeData.fcgi"
+apiPath :: String -> String
+apiPath base = base ++ "/solar_api/v1/GetPowerFlowRealtimeData.fcgi"
 
 -- Inverter Entry example
 {-
@@ -86,54 +86,52 @@ type PowerflowAPIBodyData = PowerflowBody
 {- |
   Container for the "Data" content
 -}
-type PowerflowAPIEntryBody :: Type
-data PowerflowAPIEntryBody = PowerflowAPIEntryBody
-    {dayta :: PowerflowAPIBodyData}
+newtype PowerflowAPIEntryBody = PowerflowAPIEntryBody {dataF :: PowerflowAPIBodyData}
     deriving stock (Generic, Show)
 
 instance FromJSON PowerflowAPIEntryBody where
     parseJSON :: Value -> Parser PowerflowAPIEntryBody
     parseJSON = withObject "PowerflowAPIEntryBody" $ \v -> do
-        dayta <- v .: "Data"
-        return (PowerflowAPIEntryBody {dayta = dayta})
+        dataF <- v .: "Data"
+        return (PowerflowAPIEntryBody {dataF = dataF})
 
 instance ToJSON PowerflowAPIEntryBody where
     toJSON :: PowerflowAPIEntryBody -> Value
-    toJSON (PowerflowAPIEntryBody dayta) = object ["Data" .= dayta]
+    toJSON (PowerflowAPIEntryBody dataF) = object ["Data" .= dataF]
 
 {- |
   Top-level container for the "Body" and "Head" content
 -}
 type PowerflowAPIEntry :: Type
 data PowerflowAPIEntry = PowerflowAPIEntry
-    { bodyPFA :: PowerflowAPIEntryBody,
-      headPFA :: HeadData
+    { bodyF :: PowerflowAPIEntryBody,
+      headF :: HeadData
     }
     deriving stock (Generic, Show)
 
 instance FromJSON PowerflowAPIEntry where
     parseJSON :: Value -> Parser PowerflowAPIEntry
     parseJSON = withObject "PowerflowAPIEntry" $ \v -> do
-        bodyPFA <- v .: "Body"
-        headPFA <- v .: "Head"
-        return (PowerflowAPIEntry {bodyPFA = bodyPFA, headPFA = headPFA})
+        bodyF <- v .: "Body"
+        headF <- v .: "Head"
+        return (PowerflowAPIEntry {bodyF = bodyF, headF = headF})
 
 instance ToJSON PowerflowAPIEntry where
     toJSON :: PowerflowAPIEntry -> Value
-    toJSON (PowerflowAPIEntry bodyPFA headPFA) = object ["Body" .= bodyPFA, "Head" .= headPFA]
+    toJSON (PowerflowAPIEntry bodyF headF) = object ["Body" .= bodyF, "Head" .= headF]
 
 instance FroniusHeadData PowerflowAPIEntry where
     headData :: PowerflowAPIEntry -> HeadData
-    headData = headPFA
+    headData = headF
 
     baseTags :: PowerflowAPIEntry -> [(String, String)]
-    baseTags entry = ("version", version . dayta . bodyPFA $ entry) : tagsFromHead entry
+    baseTags entry = ("version", version . dataF . bodyF $ entry) : tagsFromHead entry
 
 instance ProtoMetricGenerator PowerflowAPIEntry where
     protoMetrics :: PowerflowAPIEntry -> ProtoInfluxMetrics
     protoMetrics entry = do
         let
-            bodyData = dayta . bodyPFA $ entry
+            bodyData = dataF . bodyF $ entry
         powerflowSiteMetrics (site bodyData) ++ powerflowInverterMetrics (inverters bodyData)
 
 instance InfluxMetricGenerator PowerflowAPIEntry where

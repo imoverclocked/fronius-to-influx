@@ -8,15 +8,15 @@
 {-# OPTIONS_GHC -Wno-unsafe #-}
 
 module F2I.FroniusInverterData (
-    InverterStat (..),
-    InverterEntry (..),
+    InverterStat (InverterStat),
+    InverterEntry (InverterEntry),
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), object, withObject, (.:), (.=))
 import Data.Aeson.Types (Parser, Value)
 import Data.Kind (Type)
 import Data.Map (Map, toList)
-import F2I.Common (InfluxMetric (..), InfluxMetricGenerator (..), ProtoInfluxMetrics, ProtoMetricGenerator (protoMetrics))
+import F2I.Common (InfluxMetric, InfluxMetricGenerator (..), ProtoInfluxMetrics, ProtoMetricGenerator (protoMetrics))
 import F2I.FroniusCommon (FroniusHeadData (baseTags, headData, headTimestamp, tagsFromHead), HeadData, defaultInfluxMetrics)
 import GHC.Generics (Generic)
 import Prelude (Either (Left), Int, Monad (return), Show, String, ($), (++))
@@ -83,31 +83,31 @@ instance ToJSON InverterStat where
 
 type InverterEntry :: Type
 data InverterEntry = InverterEntry
-    { bodyIE :: Map String InverterStat,
-      headIE :: HeadData
+    { bodyF :: Map String InverterStat,
+      headF :: HeadData
     }
     deriving stock (Generic, Show)
 
 instance FromJSON InverterEntry where
     parseJSON :: Value -> Parser InverterEntry
     parseJSON = withObject "InverterEntry" $ \v -> do
-        bodyIE <- v .: "Body"
-        headIE <- v .: "Head"
-        return (InverterEntry {bodyIE = bodyIE, headIE = headIE})
+        bodyF <- v .: "Body"
+        headF <- v .: "Head"
+        return (InverterEntry {bodyF = bodyF, headF = headF})
 
 instance ToJSON InverterEntry where
     toJSON :: InverterEntry -> Value
-    toJSON (InverterEntry bodyIE headIE) = object ["Body" .= bodyIE, "Head" .= headIE]
+    toJSON (InverterEntry bodyF headF) = object ["Body" .= bodyF, "Head" .= headF]
 
 instance FroniusHeadData InverterEntry where
     headData :: InverterEntry -> HeadData
-    headData = headIE
+    headData = headF
 
 instance ProtoMetricGenerator InverterEntry where
     protoMetrics :: InverterEntry -> ProtoInfluxMetrics
     protoMetrics entry = do
         let
-            bodyData = bodyIE entry
+            bodyData = bodyF entry
         [ ( [("id", i), ("unit", unit inverterStat)],
             (key, Left v1)
           )

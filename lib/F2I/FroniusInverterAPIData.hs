@@ -20,8 +20,8 @@ will publish via ftp.
 -}
 module F2I.FroniusInverterAPIData (
     apiPath,
-    InverterAPIEntryBody (..),
-    InverterAPIEntry (..),
+    InverterAPIEntryBody (InverterAPIEntryBody),
+    InverterAPIEntry (InverterAPIEntry),
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), object, withObject, (.:), (.=))
@@ -29,13 +29,13 @@ import Data.Aeson.Types (Parser, Value)
 import Data.Kind (Type)
 import Data.Map (Map, toList)
 import Data.Maybe (mapMaybe)
-import F2I.Common (InfluxMetric (..), InfluxMetricGenerator (..), ProtoInfluxMetrics, ProtoMetricGenerator (protoMetrics))
+import F2I.Common (InfluxMetric, InfluxMetricGenerator (..), ProtoInfluxMetrics, ProtoMetricGenerator (protoMetrics))
 import F2I.FroniusCommon (FroniusHeadData (..), HeadData, defaultInfluxMetrics, maybeNumericValue)
 import GHC.Generics (Generic)
 import Prelude (Either (Left), Int, Monad (return), Show, String, ($), (++), (.))
 
-apiPath :: String
-apiPath = "/solar_api/v1/GetInverterInfo.cgi"
+apiPath :: String -> String
+apiPath base = base ++ "/solar_api/v1/GetInverterInfo.cgi"
 
 -- Inverter Entry example
 {-
@@ -69,53 +69,50 @@ apiPath = "/solar_api/v1/GetInverterInfo.cgi"
 type InverterAPIEntryBody :: Type
 data InverterAPIEntryBody = InverterAPIEntryBody
     { -- | Inverter Name/Number -> Stat Name -> Stat Value
-      daytah :: Map String (Map String Value)
+      dataF :: Map String (Map String Value)
     }
     deriving stock (Generic, Show)
 
 instance FromJSON InverterAPIEntryBody where
     parseJSON :: Value -> Parser InverterAPIEntryBody
     parseJSON = withObject "InverterAPIEntryBody" $ \v -> do
-        daytah <- v .: "Data"
-        return (InverterAPIEntryBody {daytah = daytah})
+        dataF <- v .: "Data"
+        return (InverterAPIEntryBody {dataF = dataF})
 
 instance ToJSON InverterAPIEntryBody where
     toJSON :: InverterAPIEntryBody -> Value
-    toJSON (InverterAPIEntryBody dayta) = object ["Data" .= dayta]
+    toJSON (InverterAPIEntryBody dataF) = object ["Data" .= dataF]
 
 {- |
   Top-level container
 -}
 type InverterAPIEntry :: Type
 data InverterAPIEntry = InverterAPIEntry
-    { bodyIAE :: InverterAPIEntryBody,
-      headIAE :: HeadData
+    { bodyF :: InverterAPIEntryBody,
+      headF :: HeadData
     }
     deriving stock (Generic, Show)
 
 instance FromJSON InverterAPIEntry where
     parseJSON :: Value -> Parser InverterAPIEntry
     parseJSON = withObject "InverterAPIEntry" $ \v -> do
-        bodyIAE <- v .: "Body"
-        headIAE <- v .: "Head"
-        return (InverterAPIEntry {bodyIAE = bodyIAE, headIAE = headIAE})
+        bodyF <- v .: "Body"
+        headF <- v .: "Head"
+        return (InverterAPIEntry {bodyF = bodyF, headF = headF})
 
 instance ToJSON InverterAPIEntry where
     toJSON :: InverterAPIEntry -> Value
-    toJSON (InverterAPIEntry bodyIAE headIAE) = object ["Body" .= bodyIAE, "Head" .= headIAE]
+    toJSON (InverterAPIEntry bodyF headF) = object ["Body" .= bodyF, "Head" .= headF]
 
 instance FroniusHeadData InverterAPIEntry where
     headData :: InverterAPIEntry -> HeadData
-    headData = headIAE
-
-    baseTags :: InverterAPIEntry -> [(String, String)]
-    baseTags = tagsFromHead
+    headData = headF
 
 instance ProtoMetricGenerator InverterAPIEntry where
     protoMetrics :: InverterAPIEntry -> ProtoInfluxMetrics
     protoMetrics entry = do
         let
-            bodyData = daytah . bodyIAE $ entry :: Map String (Map String Value)
+            bodyData = dataF . bodyF $ entry :: Map String (Map String Value)
         [ ( [("id", i)],
             (key, Left v1)
           )

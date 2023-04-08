@@ -8,7 +8,7 @@
 {-# OPTIONS_GHC -Wno-unsafe #-}
 
 module F2I.FroniusPowerflowData (
-    PowerflowBody (..),
+    PowerflowBody (..), -- export all so we can reuse for PowerflowAPIBodyData
     PowerflowEntry (PowerflowEntry),
     powerflowSiteMetrics,
     powerflowInverterMetrics,
@@ -89,28 +89,28 @@ instance FromJSON PowerflowBody where
 
 type PowerflowEntry :: Type
 data PowerflowEntry = PowerflowEntry
-    { bodyPF :: PowerflowBody,
-      headPF :: HeadData
+    { bodyF :: PowerflowBody,
+      headF :: HeadData
     }
     deriving stock (Generic, Show)
 
 instance FromJSON PowerflowEntry where
     parseJSON :: Value -> Parser PowerflowEntry
     parseJSON = withObject "PowerflowEntry" $ \v -> do
-        bodyPF <- v .: "Body"
-        headPF <- v .: "Head"
-        return (PowerflowEntry {bodyPF = bodyPF, headPF = headPF})
+        bodyF <- v .: "Body"
+        headF <- v .: "Head"
+        return (PowerflowEntry {bodyF = bodyF, headF = headF})
 
 instance ToJSON PowerflowEntry where
     toJSON :: PowerflowEntry -> Value
-    toJSON (PowerflowEntry body headData) = object ["Body" .= body, "Head" .= headData]
+    toJSON (PowerflowEntry bodyF headF) = object ["Body" .= bodyF, "Head" .= headF]
 
 instance FroniusHeadData PowerflowEntry where
     headData :: PowerflowEntry -> HeadData
-    headData = headPF
+    headData = headF
 
     baseTags :: PowerflowEntry -> [(String, String)]
-    baseTags entry = ("version", version $ bodyPF entry) : tagsFromHead entry
+    baseTags entry = ("version", version $ bodyF entry) : tagsFromHead entry
 
 powerflowSiteMetrics :: Map String Value -> ProtoInfluxMetrics
 powerflowSiteMetrics siteMap = do
@@ -134,7 +134,7 @@ instance ProtoMetricGenerator PowerflowEntry where
     protoMetrics :: PowerflowEntry -> ProtoInfluxMetrics
     protoMetrics entry = do
         let
-            bodyData = bodyPF entry
+            bodyData = bodyF entry
         powerflowSiteMetrics (site bodyData) ++ powerflowInverterMetrics (inverters bodyData)
 
 instance InfluxMetricGenerator PowerflowEntry where
