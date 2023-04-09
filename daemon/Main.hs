@@ -10,7 +10,7 @@
 module Main (main) where
 
 import Control.Concurrent (threadDelay)
-import Control.Exception (Exception (displayException))
+import Control.Exception (Exception (displayException), catch)
 import Control.Monad (forever)
 import Data.Aeson (FromJSON)
 import Data.Data (Data)
@@ -24,7 +24,7 @@ import GHC.IO.StdHandles (stderr)
 import Network.HTTP.Client (Response, parseRequest)
 import Network.HTTP.Simple (JSONException, getResponseBody, httpJSONEither)
 import System.Console.CmdArgs (cmdArgs, details, help, summary, (&=))
-import Prelude (Either (Left, Right), IO, Int, Maybe (Just, Nothing), Monad (return), Num ((*), (-)), Show, String, ($))
+import Prelude (Either (Left, Right), IO, Int, Maybe (Just, Nothing), Monad (return), Num ((*), (-)), Show, String, ($), (.))
 
 type FroniusToInfluxD :: Type
 data FroniusToInfluxD = FroniusToInfluxD
@@ -59,12 +59,9 @@ doRequest apiPath = do
     response :: Response (Either JSONException a) <- httpJSONEither request
     return $ getResponseBody response
 
-printError :: JSONException -> IO ()
-printError e = hPutStr stderr $ displayException e
-
-handleMetric :: (InfluxMetricGenerator a) => FroniusToInfluxD -> Either JSONException a -> IO (Maybe a)
+handleMetric :: (Exception a, InfluxMetricGenerator b) => FroniusToInfluxD -> Either a b -> IO (Maybe b)
 handleMetric _ (Left exception) = do
-    printError exception
+    hPutStr stderr $ displayException exception
     return Nothing
 handleMetric realArgs (Right res) = do
     sendStats (influx_protocol realArgs) (host realArgs) (port realArgs) $ Just res
@@ -72,7 +69,7 @@ handleMetric realArgs (Right res) = do
 
 metricRequest :: (FromJSON a, InfluxMetricGenerator a) => FroniusToInfluxD -> String -> IO (Maybe a)
 metricRequest realArgs path = do
-    m :: Either JSONException a <- doRequest path
+    m :: Either b a <- catch (doRequest path) (return . Left)
     handleMetric realArgs m
 
 main :: IO ()

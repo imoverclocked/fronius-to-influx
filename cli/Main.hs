@@ -6,6 +6,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# OPTIONS_GHC -Wno-missing-local-signatures #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-unsafe #-}
 {-# OPTIONS_GHC -fno-cse #-}
 
@@ -14,7 +15,7 @@ module Main (main) where
 import Control.Monad (unless, when)
 import Data.IORef (IORef, atomicModifyIORef, newIORef, readIORef)
 import Data.Kind (Type)
-import Data.List (isInfixOf, isSuffixOf)
+import Data.List (isInfixOf, isSuffixOf, nub, reverse, sort)
 import F2I.Archive (processArchive)
 import F2I.Common (ArchiveStatus (ArchiveStatus, metrics, msg, path, realFile, success), ArchiveStatusStream, ProcessEntry)
 import F2I.InfluxConnection (sendStats)
@@ -150,14 +151,19 @@ _moveProcessedFiles destinationProcessedDir finalProcessedPaths =
                 relativePaths
 
             -- clean up empty archive directories (admittedly naive implementation that may miss nested edge cases)
+            let
+                dirs =
+                    reverse $ -- consider foo/bar/ before foo/
+                        sort $ -- group like-directories together
+                            nub $ -- only consider each directory once
+                                map dropFileName relativePaths
+
             mapM_
-                ( ( \path -> do
-                        srcDir <- listDirectory path
-                        when (null srcDir) $ removeDirectory path
-                  )
-                    . dropFileName
+                ( \path -> do
+                    srcDir <- listDirectory path
+                    when (null srcDir) $ removeDirectory path
                 )
-                relativePaths
+                dirs
             hPutStr stderr $ "Moved processed paths (dest: " ++ destinationProcessedDir ++ "): " ++ show relativePaths ++ "\n"
         else hPutStr stderr "Leaving files in place.\n"
 
